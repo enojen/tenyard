@@ -1,0 +1,10 @@
+# The volume of one task: /home/tenzel of every run of the task, from start to close.
+# run.sh fills __NAME__ (the task id in lower case) and __TASK__ (the task id).
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: task-__NAME__
+  labels: { app: tenyard, task: __TASK__ }
+spec:
+  accessModes: [ReadWriteOnce]
+  resources: { requests: { storage: 10Gi } }

@@ -1,0 +1,48 @@
+# One agent run: one Job, one pod, the task volume on /home/tenzel, the secrets as env.
+# run.sh fills the __X__ fields. The image reads TENBOX_* and the secrets at boot
+# (tenbox machines/k8s/boot.sh) and ends when its claude session is done.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: task-__NAME__-__RUN__
+  labels: { app: tenyard, task: __TASK__ }
+spec:
+  backoffLimit: 0
+  # One run is one tenbox command and the session it leaves behind; 8 hours is a long one.
+  activeDeadlineSeconds: 28800
+  ttlSecondsAfterFinished: 600
+  template:
+    metadata:
+      labels: { app: tenyard, task: __TASK__ }
+    spec:
+      restartPolicy: Never
+      terminationGracePeriodSeconds: 60
+      imagePullSecrets: [{ name: ghcr }]
+      containers:
+        - name: box
+          image: __IMAGE__
+          imagePullPolicy: Always
+          env:
+            - { name: TENBOX_TASK, value: "__TASK__" }
+            - { name: TENBOX_PROJECT, value: "__PROJECT__" }
+            - { name: TENBOX_REPO, value: "__REPO__" }
+            - name: TENBOX_CMD
+              value: |-
+                __CMD__
+            - name: GITHUB_TOKEN
+              valueFrom: { secretKeyRef: { name: github-token, key: token } }
+            - name: CLAUDE_CREDENTIALS
+              valueFrom: { secretKeyRef: { name: claude-credentials, key: credentials.json } }
+            - name: TRACKER_API_KEY
+              valueFrom: { secretKeyRef: { name: tracker, key: api_key, optional: true } }
+            - name: NTFY_URL
+              valueFrom: { secretKeyRef: { name: ntfy, key: url, optional: true } }
+          # Low requests, high limits: agents share the node and the one that runs tests bursts.
+          resources:
+            requests: { cpu: 500m, memory: 2Gi }
+            limits: { cpu: "4", memory: 5Gi }
+          volumeMounts:
+            - { name: home, mountPath: /home/tenzel }
+      volumes:
+        - name: home
+          persistentVolumeClaim: { claimName: task-__NAME__ }
