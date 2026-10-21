@@ -8,6 +8,10 @@ and nothing running when no task runs. It is built on k3s on Hetzner, from plain
 manifests. [Tenbox](https://github.com/enojen/tenbox) is its first client; any agent that
 fits in a container can be the next.
 
+The line between the two: what is inside the box belongs to the agent's own repository
+(Tenbox keeps its image, `Dockerfile` and `boot.sh`, in `machines/k8s/`); where and how the
+box runs belongs to Tenyard. Tenyard never knows what an image does, only how to run it.
+
 ## What is here today
 
 - `install/`: how the cluster is set up, on one Hetzner server, with a rollback.
