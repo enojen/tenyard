@@ -3,7 +3,7 @@
 Tenbox is the box. Tenyard is the yard it runs in.
 
 Tenyard is a small Kubernetes runtime for coding agents: one Job and one volume per
-task, low requests and high limits so that several agents share a node and still burst,
+task, low CPU requests and high CPU limits so that several agents share a node and still burst,
 and nothing running when no task runs. It is built on k3s on Hetzner, from plain
 manifests. [Tenbox](https://github.com/enojen/tenbox) is its first client; any agent that
 fits in a container can be the next.
@@ -47,8 +47,10 @@ PROJECT=demo REPO=https://github.com/me/demo.git task/run.sh DEMO-1 "tenbox buil
 are env. The Job is `task-<task>-<time>` with the labels `app: tenyard, task: <task>`; a task
 has one run at a time (its volume mounts on one pod), so `run.sh` refuses while a Job of the
 task is active. The Job runs at most 8 hours, never retries, gets 60 seconds to stop, and is
-deleted 10 minutes after it ends. Requests are low (0.5 CPU, 2 GiB) and limits high
-(4 CPU, 5 GiB), so several agents share the node and the one that runs tests bursts.
+deleted 10 minutes after it ends. The CPU request is low (0.5) and its limit high (4), so
+several agents share the cores and the one that runs tests bursts. RAM is 5 GiB, request and
+limit alike: a test sweep fills it, and two boxes that burst at once ran a node out of memory
+(2026-10-26). A Job that does not fit waits Pending until a box ends.
 
 The Job reads five Secrets in the namespace; `task/secrets.sh` writes them from the files
 on your computer, until the agent's own login sync does:
