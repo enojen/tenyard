@@ -1,0 +1,17 @@
+#cloud-config
+# A box worker: waits for its tenyard-net address, then joins k3s as an agent with a
+# bootstrap token, which can join workers only. The private interface is found by its address,
+# as its name differs between server types. The node registers with the location label of the
+# CSI driver: a task volume asks for it, and without it until the CSI node plugin writes it, the
+# autoscaler sees a node the box does not fit on and adds one more. autoscaler.sh fills
+# __SERVER_IP__ and __TOKEN__.
+runcmd:
+  - until ip -4 -o addr | grep -q 'inet 10\.1\.'; do sleep 1; done
+  - >-
+    iface="$(ip -4 -o addr | awk '/inet 10\.1\./ { print $2 }')";
+    ip="$(ip -4 -o addr show "$iface" | awk '{ print $4 }' | cut -d/ -f1)";
+    location="$(curl -sf http://169.254.169.254/hetzner/v1/metadata/availability-zone | cut -d- -f1)";
+    curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION=v1.36.5+k3s1
+    K3S_URL=https://__SERVER_IP__:6443 K3S_TOKEN=__TOKEN__
+    INSTALL_K3S_EXEC="agent --node-ip $ip --flannel-iface $iface --kubelet-arg=cloud-provider=external
+    --node-label csi.hetzner.cloud/location=$location" sh -

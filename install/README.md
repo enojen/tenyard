@@ -78,6 +78,86 @@ All commands run on the server as root, except where noted.
    KUBECONFIG=~/.kube/tenyard.yaml kubectl apply -f install/limitrange.yaml
    ```
 
+## Workers
+
+Boxes run on workers that the cluster autoscaler adds and removes; the server keeps the
+control plane, the CCM, the CSI controller and the autoscaler, and gets a taint so no box runs
+there. Three things make the Hetzner autoscaler work with k3s, all found in a rehearsal on a
+throwaway server before tenbox-ci (2026-10-26):
+
+- The autoscaler finds a node's server by `spec.providerID` = `hcloud://<server id>`. k3s
+  writes `k3s://<node name>`, and the autoscaler then deletes every new worker after 15 minutes
+  as unregistered. The Hetzner cloud-controller-manager (CCM) writes the right one; k3s runs
+  with `--disable-cloud-controller` and the kubelet with `cloud-provider=external`.
+- The nodes talk over the private network `tenyard-net`, so a worker needs no open port and the
+  API stays closed to the internet. k3s cannot change the IP of a running node: the node is
+  deleted and registers again, which is also the only way to change its `providerID`.
+- A new worker carries the CCM's `uninitialized` taint for a few seconds; the autoscaler must
+  know it as a startup taint, or it adds a second worker.
+
+From your computer, once, on a server set up with the steps above:
+
+9. Make the network and the worker firewall (no inbound rule: the private network is not
+   filtered, and a worker needs nothing from the internet):
+
+   ```
+   hcloud network create --name tenyard-net --ip-range 10.1.0.0/16 --label app=tenyard
+   hcloud network add-subnet tenyard-net --network-zone eu-central --type cloud --ip-range 10.1.0.0/24
+   hcloud server attach-to-network <server> --network tenyard-net --ip 10.1.0.2
+   hcloud firewall create --name tenyard-worker --label app=tenyard
+   ```
+
+   `hc-utils` on the Hetzner Ubuntu image brings the new interface up after about 20
+   seconds (`ip -br addr`: `enp7s0` with `10.1.0.2/32`).
+
+10. Snapshot the server, keep the task volumes whatever happens, and let the CSI controller
+    run on the tainted server:
+
+    ```
+    hcloud server create-image --type snapshot --description "before workers" <server>
+    for pv in $(kubectl get pv -o name); do
+      kubectl patch "$pv" -p '{"spec":{"persistentVolumeReclaimPolicy":"Retain"}}'
+    done
+    kubectl -n kube-system patch deployment hcloud-csi-controller --patch-file install/csi-controller.patch.yaml
+    ```
+
+11. With no box running, on the server: add the network name to the `hcloud` Secret, write
+    the new flags, delete the node and start k3s again. The node registers with its private IP,
+    no `providerID` and the `uninitialized` taint; Secrets, volumes and the namespace stay:
+
+    ```
+    k3s kubectl -n kube-system patch secret hcloud -p '{"stringData":{"network":"tenyard-net"}}'
+    curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION=v1.36.5+k3s1 INSTALL_K3S_SKIP_START=true \
+      INSTALL_K3S_EXEC="server --tls-san <public ip> --disable traefik \
+        --kubelet-arg=system-reserved=cpu=1,memory=1.5Gi \
+        --node-ip 10.1.0.2 --advertise-address 10.1.0.2 --flannel-iface enp7s0 \
+        --disable-cloud-controller --kubelet-arg=cloud-provider=external" sh -
+    k3s kubectl delete node <server>
+    systemctl restart k3s
+    ```
+
+    If `k3s kubectl get nodes` stays empty for 30 seconds, the old kubelet registered before
+    the delete ended: run `systemctl restart k3s` once more.
+
+12. From your computer: the CCM, then the taint. The CCM sets `hcloud://<id>`, the private
+    `InternalIP` and the public `ExternalIP`, and removes the `uninitialized` taint:
+
+    ```
+    kubectl apply -f install/ccm/ccm.yaml
+    kubectl get nodes -o custom-columns=NAME:.metadata.name,ID:.spec.providerID
+    kubectl taint node <server> node-role.kubernetes.io/control-plane:NoSchedule
+    ```
+
+13. The autoscaler (`install/autoscaler/`): three pools in hel1, from 0, in the order cx43,
+    cpx32, cpx42; a worker goes after 50 minutes unneeded:
+
+    ```
+    install/autoscaler/autoscaler.sh <server public ip> 10.1.0.2
+    ```
+
+    The worker joins with a bootstrap token (`k3s token create`), which can join workers only;
+    it is in the Secret `tenyard-autoscaler` and in each worker's cloud-init.
+
 ## Check
 
 `install/check.sh` runs a pod that writes a file to a new volume, reads it back, reaches
@@ -100,4 +180,6 @@ hcloud server rebuild --image <snapshot id> <server>
 |---|---|
 | k3s | v1.36.5+k3s1 (stable channel, 2026-10-21) |
 | Hetzner CSI driver | v2.24.0 |
+| Hetzner cloud-controller-manager | v1.39.2 |
+| cluster-autoscaler | v1.36.1 |
 | kubectl on the computer | v1.36.5 |

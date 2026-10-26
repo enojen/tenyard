@@ -14,12 +14,12 @@ box runs belongs to Tenyard. Tenyard never knows what an image does, only how to
 
 ## What is here today
 
-- `install/`: how the cluster is set up, on one Hetzner server, with a rollback.
+- `install/`: how the cluster is set up, on one Hetzner server, with a rollback, and the
+  workers that the cluster autoscaler adds for the boxes and removes when they are idle.
 - `task/`: one agent run as a Job on the task's volume, with the Secrets it reads.
 
-Everything else (resource classes, snapshots, the autoscaler, the
-queue, the preview URLs, the resize controller) comes step by step; the README grows with
-the code.
+Everything else (snapshots, the queue, the preview URLs, the resize controller) comes step by
+step; the README grows with the code.
 
 ## Why not a sandbox provider
 
@@ -47,8 +47,10 @@ PROJECT=demo REPO=https://github.com/me/demo.git task/run.sh DEMO-1 "tenbox buil
 `NAMESPACE` (`tenbox`) are env. The Job is `task-<task>-<time>` with the labels `app: tenyard, task: <task>`; a task
 has one run at a time (its volume mounts on one pod), so `run.sh` refuses while a Job of the
 task is active. The Job runs at most 8 hours, never retries, gets 60 seconds to stop, and is
-deleted 10 minutes after it ends. Its CPU and RAM come from a resource class (below). A Job
-that does not fit waits Pending until a box ends.
+deleted 10 minutes after it ends. Its CPU and RAM come from a resource class (below). No box
+runs on the server: a Job that fits on no worker makes the autoscaler add one, and the box
+starts there in about 2 minutes instead of 20 s (`docs/numbers.md`); a worker with no box
+goes after 50 minutes, near the end of its billed hour (`install/README.md`, "Workers").
 
 ### Resource classes
 
