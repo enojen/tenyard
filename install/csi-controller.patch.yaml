@@ -1,0 +1,8 @@
+# The CSI controller attaches volumes; it may run on the tainted control plane, so a box
+# volume attaches while the pool is at zero. Apply after the CSI driver:
+#   kubectl -n kube-system patch deployment hcloud-csi-controller --patch-file install/csi-controller.patch.yaml
+spec:
+  template:
+    spec:
+      tolerations:
+        - { key: node-role.kubernetes.io/control-plane, effect: NoSchedule }
