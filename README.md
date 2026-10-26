@@ -33,7 +33,7 @@ behind this are in `docs/numbers.md` once they are measured.
 ## One run: `task/`
 
 One agent run is one Job: the box image, one tenbox command, the task's volume on
-`/home/tenzel`, the secrets as env. The volume outlives the pod, so the next run of the task
+`/home/tenbox`, the secrets as env. The volume outlives the pod, so the next run of the task
 continues from it; the pod ends when the command and the claude session it left behind are
 done. `task/run.sh <task> "<command>"` applies the volume (`task/pvc.yaml`, kept when it
 exists) and the Job (`task/job.yaml`), then follows the log until the pod ends:

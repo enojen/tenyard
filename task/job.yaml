@@ -1,4 +1,4 @@
-# One agent run: one Job, one pod, the task volume on /home/tenzel, the secrets as env.
+# One agent run: one Job, one pod, the task volume on /home/tenbox, the secrets as env.
 # run.sh fills the __X__ fields. The image reads TENBOX_* and the secrets at boot
 # (tenbox machines/k8s/boot.sh) and ends when its claude session is done.
 apiVersion: batch/v1
@@ -42,7 +42,7 @@ spec:
             requests: { cpu: 500m, memory: 2Gi }
             limits: { cpu: "4", memory: 5Gi }
           volumeMounts:
-            - { name: home, mountPath: /home/tenzel }
+            - { name: home, mountPath: /home/tenbox }
       volumes:
         - name: home
           persistentVolumeClaim: { claimName: task-__NAME__ }
