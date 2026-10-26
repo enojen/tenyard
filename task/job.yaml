@@ -16,6 +16,8 @@ spec:
       labels: { app: tenyard, task: __TASK__ }
     spec:
       restartPolicy: Never
+      # The box never calls the cluster API; the token would only be something to steal (TEN-522).
+      automountServiceAccountToken: false
       terminationGracePeriodSeconds: 60
       imagePullSecrets: [{ name: ghcr }]
       containers:
