@@ -29,6 +29,9 @@ spec:
             - name: TENBOX_CMD
               value: |-
                 __CMD__
+            - name: TENBOX_ENV
+              value: |-
+                __ENV__
             - name: GITHUB_TOKEN
               valueFrom: { secretKeyRef: { name: github-token, key: token } }
             - name: CLAUDE_CREDENTIALS
