@@ -89,3 +89,40 @@ One token per repo; `task/secrets.sh` reads it from `~/.config/tenbox/github-box
 Secret `ghcr` needs a token with `read:packages`, which a fine-grained token cannot have:
 `secrets.sh` reads it from `~/.config/tenbox/ghcr-token` (the first run of this experiment failed
 on `ImagePullBackOff` because the script took the pull token from the box token file).
+
+## A box on a new worker (TEN-464)
+
+Source: a rehearsal cluster on 2026-10-26 (a cx23 control plane in hel1 with k3s v1.36.5+k3s1,
+the CCM, the CSI driver and cluster-autoscaler v1.36.1, `install/autoscaler/`), a Job with the
+`build` class (500m / 2Gi) on a 10 GB task volume, busybox, no worker running. Times from the
+Job's `creationTimestamp`, from the autoscaler log and the pod events.
+
+| step | run 1 | run 3 |
+|---|---|---|
+| cx43 tried, Hetzner: `resource_unavailable` | +7 s | +10 s |
+| cpx32 ordered | +17 s | +20 s |
+| worker joined the cluster (boot, k3s agent) | +62 s | +61 s |
+| volume attached on the worker | +101 s | +97 s (one `FailedAttachVolume` first: the volume was still on the worker that had just gone) |
+| container started | +104 s | +100 s |
+
+What it says:
+
+- A box with no worker waits about 1 min 40 s, against 17–21 s on a warm node. Most of it is
+  the server: boot and the k3s agent take about 45 s, the volume attach 16 s as before.
+- The cx line (cx33, cx43, cx53) had no server in any EU location that evening, so a pool of
+  one type would not have started at all. The autoscaler tries the next pool 10 s later.
+- Run 2 started two workers for one box: the new node lacked `csi.hetzner.cloud/location`
+  for about 25 s, until the CSI node plugin wrote it, and the task volume asks for it. The
+  worker now registers with the label; run 3 started one.
+- Scale-down: an empty worker went 3 min after it was unneeded (`UNNEEDED_TIME=3m` in the
+  rehearsal; 50 min on the cluster), its Hetzner server with it.
+
+On the cluster after the move (tenbox-ci as control plane only), two read-only boxes of
+tenbox-demo with the box image (`task/run.sh DEMO-1 ls`, `task/measure.sh`), 2026-10-26:
+
+| Job (UTC) | class | worker | scheduled | volume attached | image pull | ready |
+|---|---|---|---|---|---|---|
+| 22:40:01 | `plan` | new cpx32 (cx43 sold out) | +66 s | +102 s | 16.5 s | +120 s |
+| 22:42:27 | `build` | the same, warm | +0 s | +16 s | 0.9 s | +19 s |
+
+A box on a new worker is ready in about 2 minutes, on a warm one in 20 s as before.
