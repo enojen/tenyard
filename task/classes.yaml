@@ -1,0 +1,9 @@
+# The resource classes of a box. The agent picks one per Job (tenbox: `start` and `close` take
+# plan, `build` takes `machine.class` of the project's tenbox.yaml, default build) and fills the
+# __CLASS__, __CPU__, __CPU_LIMIT__ and __MEMORY__ fields of job.yaml with it. The CPU request is
+# low and its limit high, so boxes share the cores and the one that runs tests bursts. RAM is
+# request and limit alike and follows the measured peak (README, "Resource classes"). One line
+# per class: run.sh reads them with sed.
+plan: { cpu: 250m, cpu_limit: "2", memory: 1536Mi }
+build: { cpu: 500m, cpu_limit: "4", memory: 2Gi }
+heavy: { cpu: 500m, cpu_limit: "4", memory: 5Gi }

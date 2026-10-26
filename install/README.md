@@ -71,6 +71,13 @@ All commands run on the server as root, except where noted.
    binary of the cluster's version from `https://dl.k8s.io/release/<version>/bin/<os>/<arch>/kubectl`
    into `~/.local/bin`.
 
+8. Give a container without resources the `plan` class (`task/classes.yaml`), from your
+   computer:
+
+   ```
+   KUBECONFIG=~/.kube/tenyard.yaml kubectl apply -f install/limitrange.yaml
+   ```
+
 ## Check
 
 `install/check.sh` runs a pod that writes a file to a new volume, reads it back, reaches

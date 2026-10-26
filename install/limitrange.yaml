@@ -1,0 +1,12 @@
+# A container of namespace tenbox that names no resources, such as a pod made by hand on a task
+# volume, gets the plan class of task/classes.yaml.
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: box-default
+  namespace: tenbox
+spec:
+  limits:
+    - type: Container
+      defaultRequest: { cpu: 250m, memory: 1536Mi }
+      default: { cpu: "2", memory: 1536Mi }

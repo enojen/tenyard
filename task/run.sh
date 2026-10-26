@@ -8,9 +8,9 @@
 #
 # Env: PROJECT (tenbox), PROJECT_ID (xathah, the id in its tenbox.yaml), REPO
 # (https://github.com/enojen/tenbox.git), IMAGE (ghcr.io/enojen/tenbox-box:latest), BOX_ENV
-# ({}, the project's variables as one JSON object), NAMESPACE (tenbox). run.sh does not write
-# the project Secret: a Job before it from `tenbox machine run` did, or the box runs without a
-# tracker key and ntfy URL.
+# ({}, the project's variables as one JSON object), CLASS (build, a class of classes.yaml),
+# NAMESPACE (tenbox). run.sh does not write the project Secret: a Job before it from
+# `tenbox machine run` did, or the box runs without a tracker key and ntfy URL.
 set -euo pipefail
 # bash 5.2 reads `&` in a `${x//a/b}` replacement as the match; a command may hold one.
 shopt -u patsub_replacement 2> /dev/null || true
@@ -21,17 +21,24 @@ project_id="${PROJECT_ID:-xathah}"
 repo="${REPO:-https://github.com/enojen/tenbox.git}"
 image="${IMAGE:-ghcr.io/enojen/tenbox-box:latest}"
 box_env="${BOX_ENV:-"{}"}"
+class="${CLASS:-build}"
 ns="${NAMESPACE:-tenbox}"
 here="$(cd "$(dirname "$0")" && pwd)"
 name="$(printf '%s' "$task" | tr '[:upper:]_' '[:lower:]-')"
 run="$(date -u +%m%d-%H%M%S)"
 job="task-$name-$run"
 
+line="$(grep -E "^$class: " "$here/classes.yaml")" || { echo "no class $class in classes.yaml" >&2; exit 1; }
+field() { printf '%s' "$line" | sed -E "s/.*[{ ,]$1: \"?([^\",} ]+)\"?.*/\1/"; }
+cpu="$(field cpu)"; cpu_limit="$(field cpu_limit)"; memory="$(field memory)"
+
 fill() {
   local text; text="$(< "$here/$1")"
   text="${text//__NAME__/$name}"; text="${text//__TASK__/$task}"; text="${text//__RUN__/$run}"
   text="${text//__PROJECT__/$project}"; text="${text//__PROJECT_ID__/$project_id}"
   text="${text//__REPO__/$repo}"; text="${text//__IMAGE__/$image}"; text="${text//__ENV__/$box_env}"
+  text="${text//__CLASS__/$class}"; text="${text//__CPU_LIMIT__/$cpu_limit}"
+  text="${text//__CPU__/$cpu}"; text="${text//__MEMORY__/$memory}"
   printf '%s\n' "${text//__CMD__/$cmd}"
 }
 
