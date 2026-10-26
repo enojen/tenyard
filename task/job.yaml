@@ -16,6 +16,7 @@ spec:
       labels: { app: tenyard, task: __TASK__, class: __CLASS__ }
     spec:
       restartPolicy: Never
+      automountServiceAccountToken: false
       terminationGracePeriodSeconds: 60
       imagePullSecrets: [{ name: ghcr }]
       containers:
