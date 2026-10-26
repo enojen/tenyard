@@ -43,14 +43,46 @@ KUBECONFIG=~/.kube/tenyard.yaml task/run.sh TEN-451 "tenbox start TEN-451"
 PROJECT=demo REPO=https://github.com/me/demo.git task/run.sh DEMO-1 "tenbox build DEMO-1"
 ```
 
-`PROJECT`, `REPO`, `IMAGE` (`ghcr.io/enojen/tenbox-box:latest`) and `NAMESPACE` (`tenbox`)
-are env. The Job is `task-<task>-<time>` with the labels `app: tenyard, task: <task>`; a task
+`PROJECT`, `REPO`, `IMAGE` (`ghcr.io/enojen/tenbox-box:latest`), `CLASS` (`build`) and
+`NAMESPACE` (`tenbox`) are env. The Job is `task-<task>-<time>` with the labels `app: tenyard, task: <task>`; a task
 has one run at a time (its volume mounts on one pod), so `run.sh` refuses while a Job of the
 task is active. The Job runs at most 8 hours, never retries, gets 60 seconds to stop, and is
-deleted 10 minutes after it ends. The CPU request is low (0.5) and its limit high (4), so
-several agents share the cores and the one that runs tests bursts. RAM is 5 GiB, request and
-limit alike: a test sweep fills it, and two boxes that burst at once ran a node out of memory
-(2026-10-26). A Job that does not fit waits Pending until a box ends.
+deleted 10 minutes after it ends. Its CPU and RAM come from a resource class (below). A Job
+that does not fit waits Pending until a box ends.
+
+### Resource classes
+
+`task/classes.yaml` names three classes; the agent picks one per Job (tenbox: `start` and
+`close` take `plan`, `build` takes `machine.class` of the project's `tenbox.yaml`, default
+`build`), and the pod carries it as the label `class`:
+
+| class | CPU request / limit | RAM, request = limit | for |
+|---|---|---|---|
+| `plan` | 250m / 2 | 1536Mi | a plan, a close, a short command |
+| `build` | 500m / 4 | 2Gi | a build of a project with a light test sweep |
+| `heavy` | 500m / 4 | 5Gi | a build whose test sweep holds several GB |
+
+The CPU request is low and its limit high: an agent waits for the model most of the time and
+needs full cores only while tests run, so boxes share the cores and the one that runs tests
+bursts. RAM is different: memory that is in use cannot be taken back, so a node whose boxes ask
+for less than they hold kills one of them. Two boxes with a 2Gi request and a 4 GB test sweep
+each ran tenbox-ci out of memory on 2026-10-26. So the RAM request is the limit, and both follow
+the measured peak.
+
+The box logs that peak as its last line, `tenbox-boot: memory peak <MiB> MiB, cpu <s> s`
+(the cgroup's `memory.peak`, file cache included, so the need is at most that). Measured on
+2026-10-26, tenbox's own task TEN-476:
+
+| run | memory peak | CPU time | time |
+|---|---|---|---|
+| `start` (first boot: clone and `bun install`) | 1434 MiB | 32 s | 2.5 min |
+| `approve` and `build` (one round, five checks) | 1290 MiB | 1114 s | 15 min |
+| `pr`, `close`, a read of the task files | 87–164 MiB | 1–3 s | 1–1.5 min |
+
+`heavy` stays at the 5Gi that a project's 4 GB test sweep needed until its own peak is measured.
+
+`install/limitrange.yaml` gives a container that names no resources, such as a pod made by
+hand on a task volume, the `plan` class.
 
 The Job reads four Secrets in the namespace. `task/secrets.sh` writes the first three from the
 files on your computer (the agent's own login sync also writes the last two of them); the

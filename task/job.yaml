@@ -13,7 +13,7 @@ spec:
   ttlSecondsAfterFinished: 600
   template:
     metadata:
-      labels: { app: tenyard, task: __TASK__ }
+      labels: { app: tenyard, task: __TASK__, class: __CLASS__ }
     spec:
       restartPolicy: Never
       terminationGracePeriodSeconds: 60
@@ -40,11 +40,10 @@ spec:
               valueFrom: { secretKeyRef: { name: project-__PROJECT_ID__, key: tracker_api_key, optional: true } }
             - name: NTFY_URL
               valueFrom: { secretKeyRef: { name: project-__PROJECT_ID__, key: ntfy_url, optional: true } }
-          # A low CPU request, so agents share the cores and the one that runs tests bursts. The RAM
-          # request is the limit: a test sweep fills it, so the next Job waits Pending.
+          # The resource class from classes.yaml.
           resources:
-            requests: { cpu: 500m, memory: 5Gi }
-            limits: { cpu: "4", memory: 5Gi }
+            requests: { cpu: __CPU__, memory: __MEMORY__ }
+            limits: { cpu: __CPU_LIMIT__, memory: __MEMORY__ }
           volumeMounts:
             - { name: home, mountPath: /home/tenbox }
       volumes:
