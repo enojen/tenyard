@@ -32,7 +32,8 @@ jq -n --rawfile t "$token_file" --arg u "$user" \
   '($t | gsub("\\s"; "")) as $tok | { auths: { "ghcr.io": { username: $u, password: $tok, auth: (($u + ":" + $tok) | @base64) } } }' \
   > "$tmp/dockerconfig.json"
 apply generic ghcr --type=kubernetes.io/dockerconfigjson --from-file=.dockerconfigjson="$tmp/dockerconfig.json"
-apply generic github-token --from-file=token="$token_file"
+tr -d '[:space:]' < "$token_file" > "$tmp/token"
+apply generic github-token --from-file=token="$tmp/token"
 apply generic claude-credentials --from-file=credentials.json="$login_file"
 if [ -s "$manifest" ]; then
   value api_key > "$tmp/api_key"
