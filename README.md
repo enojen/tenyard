@@ -52,15 +52,15 @@ several agents share the cores and the one that runs tests bursts. RAM is 5 GiB,
 limit alike: a test sweep fills it, and two boxes that burst at once ran a node out of memory
 (2026-10-26). A Job that does not fit waits Pending until a box ends.
 
-The Job reads five Secrets in the namespace; `task/secrets.sh` writes them from the files
-on your computer, until the agent's own login sync does:
+The Job reads four Secrets in the namespace. `task/secrets.sh` writes the first three from the
+files on your computer (the agent's own login sync also writes the last two of them); the
+agent writes the project Secret before each Job (tenbox: `tenbox machine run`):
 
 | Secret | Key | What |
 |---|---|---|
 | `ghcr` | `.dockerconfigjson` | pull secret of the private image (a GitHub token with `read:packages`) |
 | `github-token` | `token` | `gh` and `git push` in the box |
 | `claude-credentials` | `credentials.json` | the claude.ai login, `~/.claude/.credentials.json` |
-| `tracker` | `api_key` | the tracker key (optional) |
-| `ntfy` | `url` | the notification topic (optional) |
+| `project-<project id>` | `tracker_api_key`, `ntfy_url` | the project's tracker key and notification topic (both optional) |
 
 What the box does with them is the image's business (tenbox `machines/k8s/boot.sh`).

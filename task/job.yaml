@@ -34,9 +34,9 @@ spec:
             - name: CLAUDE_CREDENTIALS
               valueFrom: { secretKeyRef: { name: claude-credentials, key: credentials.json } }
             - name: TRACKER_API_KEY
-              valueFrom: { secretKeyRef: { name: tracker, key: api_key, optional: true } }
+              valueFrom: { secretKeyRef: { name: project-__PROJECT_ID__, key: tracker_api_key, optional: true } }
             - name: NTFY_URL
-              valueFrom: { secretKeyRef: { name: ntfy, key: url, optional: true } }
+              valueFrom: { secretKeyRef: { name: project-__PROJECT_ID__, key: ntfy_url, optional: true } }
           # A low CPU request, so agents share the cores and the one that runs tests bursts. The RAM
           # request is the limit: a test sweep fills it, so the next Job waits Pending.
           resources:
