@@ -68,3 +68,24 @@ the project's checks (`bun install`, `bunx tsc --noEmit`, `bun test`).
 
 Decision: keep it. The box never calls the cluster API; the token was only something to steal.
 `KUBERNETES_SERVICE_HOST` and `_PORT` stay in the env, they come from the Service, not the token.
+
+## A GitHub token for one repo in the box (TEN-521)
+
+Source: one read-only box of tenbox-demo on 2026-10-26 (Job `task-demo-1-1026-212650`), with
+a fine-grained token in the `github-token` Secret: repository access `enojen/tenbox-demo` only,
+contents and pull requests read and write, metadata read, no user permissions. Before it, the
+box token reached 12 repos, 2 of them private.
+
+| in the box | result |
+|---|---|
+| `gh repo create leak-test --public` | refused: `Resource not accessible by personal access token` |
+| `gh api repos/enojen/tenbox-archive` (private, outside the scope) | 404 |
+| create a branch on `enojen/tenbox` over the API (public, outside the scope) | 403 |
+| `git push` a branch of tenbox-demo, `gh pr create`, `gh pr close --delete-branch` | all work (PR #3) |
+
+Decision: keep it. A box can now only push to its own repo and open PRs there; the s1ngularity
+leak path (push the secrets to a new public repo) is closed. `boot.sh` logs in with it as before.
+One token per repo; `task/secrets.sh` reads it from `~/.config/tenbox/github-box-token`. The pull
+Secret `ghcr` needs a token with `read:packages`, which a fine-grained token cannot have:
+`secrets.sh` reads it from `~/.config/tenbox/ghcr-token` (the first run of this experiment failed
+on `ImagePullBackOff` because the script took the pull token from the box token file).
