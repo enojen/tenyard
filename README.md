@@ -96,3 +96,7 @@ agent writes the project Secret before each Job (tenbox: `tenbox machine run`):
 | `project-<project id>` | `tracker_api_key`, `ntfy_url` | the project's tracker key and notification topic (both optional) |
 
 What the box does with them is the image's business (tenbox `machines/k8s/boot.sh`).
+
+## License
+
+[Apache 2.0](LICENSE)
