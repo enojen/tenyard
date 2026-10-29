@@ -92,7 +92,9 @@ its Job, reached on `127.0.0.1`. A pod has no docker, but it can hold more conta
 in `task/services/` is one service, written as a strategic merge patch of the Job: the sidecar,
 its volumes and the env of the `box` container. The agent picks the services per Job (tenbox:
 `machine.services` of the project's `tenbox.yaml`, on `build` only); `run.sh` takes them as
-`SERVICES="postgres"` and applies each file with `kubectl patch --local`.
+`SERVICES="postgres"` and applies each file with `kubectl patch --local`. The box gives its command only
+the variables of `TENBOX_ENV`, so tenbox moves the service env there; with `run.sh`, give it in
+`BOX_ENV` too.
 
 | service | what | box env |
 |---|---|---|
