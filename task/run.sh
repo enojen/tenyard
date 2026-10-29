@@ -32,7 +32,7 @@ job="task-$name-$run"
 
 line="$(grep -E "^$class: " "$here/classes.yaml")" || { echo "no class $class in classes.yaml" >&2; exit 1; }
 field() { printf '%s' "$line" | sed -E "s/.*[{ ,]$1: \"?([^\",} ]+)\"?.*/\1/"; }
-cpu="$(field cpu)"; cpu_limit="$(field cpu_limit)"; memory="$(field memory)"
+cpu="$(field cpu)"; memory="$(field memory)"
 for service in $services; do
   [ -f "$here/services/$service.yaml" ] || { echo "no service $service in services/" >&2; exit 1; }
 done
@@ -42,7 +42,7 @@ fill() {
   text="${text//__NAME__/$name}"; text="${text//__TASK__/$task}"; text="${text//__RUN__/$run}"
   text="${text//__PROJECT__/$project}"; text="${text//__PROJECT_ID__/$project_id}"
   text="${text//__REPO__/$repo}"; text="${text//__IMAGE__/$image}"; text="${text//__ENV__/$box_env}"
-  text="${text//__CLASS__/$class}"; text="${text//__CPU_LIMIT__/$cpu_limit}"
+  text="${text//__CLASS__/$class}"
   text="${text//__CPU__/$cpu}"; text="${text//__MEMORY__/$memory}"
   printf '%s\n' "${text//__CMD__/$cmd}"
 }
