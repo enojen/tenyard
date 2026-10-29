@@ -44,7 +44,7 @@ spec:
           # The resource class from classes.yaml.
           resources:
             requests: { cpu: __CPU__, memory: __MEMORY__ }
-            limits: { cpu: __CPU_LIMIT__, memory: __MEMORY__ }
+            limits: { memory: __MEMORY__ }
           volumeMounts:
             - { name: home, mountPath: /home/tenbox }
       volumes:

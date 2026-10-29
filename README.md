@@ -3,7 +3,7 @@
 Tenbox is the box. Tenyard is the yard it runs in.
 
 Tenyard is a small Kubernetes runtime for coding agents: one Job and one volume per
-task, low CPU requests and high CPU limits so that several agents share a node and still burst,
+task, low CPU requests and no CPU limit so that several agents share a node and still burst,
 and nothing running when no task runs. It is built on k3s on Hetzner, from plain
 manifests. [Tenbox](https://github.com/enojen/tenbox) is its first client; any agent that
 fits in a container can be the next.
@@ -57,15 +57,16 @@ that does not fit waits Pending until a box ends.
 `close` take `plan`, `build` takes `machine.class` of the project's `tenbox.yaml`, default
 `build`), and the pod carries it as the label `class`:
 
-| class | CPU request / limit | RAM, request = limit | for |
+| class | CPU request | RAM, request = limit | for |
 |---|---|---|---|
-| `plan` | 250m / 2 | 1536Mi | a plan, a close, a short command |
-| `build` | 500m / 4 | 2Gi | a build of a project with a light test sweep |
-| `heavy` | 500m / 4 | 5Gi | a build whose test sweep holds several GB |
+| `plan` | 250m | 1536Mi | a plan, a close, a short command |
+| `build` | 500m | 2Gi | a build of a project with a light test sweep |
+| `heavy` | 500m | 3Gi | a build whose check chain holds up to about 2.5 GB |
 
-The CPU request is low and its limit high: an agent waits for the model most of the time and
-needs full cores only while tests run, so boxes share the cores and the one that runs tests
-bursts. RAM is different: memory that is in use cannot be taken back, so a node whose boxes ask
+The CPU request is low and there is no CPU limit: an agent waits for the model most of the time
+and needs full cores only while tests run, so boxes share the cores by their requests and the
+one that runs tests takes every idle core. A limit would throttle it while the node has cores to
+spare. RAM is different: memory that is in use cannot be taken back, so a node whose boxes ask
 for less than they hold kills one of them. Two boxes with a 2Gi request and a 4 GB test sweep
 each ran tenbox-ci out of memory on 2026-10-26. So the RAM request is the limit, and both follow
 the measured peak.
@@ -80,10 +81,11 @@ The box logs that peak as its last line, `tenbox-boot: memory peak <MiB> MiB, cp
 | `approve` and `build` (one round, five checks) | 1290 MiB | 1114 s | 15 min |
 | `pr`, `close`, a read of the task files | 87–164 MiB | 1–3 s | 1–1.5 min |
 
-`heavy` stays at the 5Gi that a project's 4 GB test sweep needed until its own peak is measured.
+`heavy` was 5Gi for a project's 4 GB test sweep; with its database moved to a Postgres service
+(below), that project's whole check chain peaks at about 2.3 GB, so `heavy` is 3Gi.
 
 `install/limitrange.yaml` gives a container that names no resources, such as a pod made by
-hand on a task volume, the `plan` class.
+hand on a task volume, the `plan` class, without a CPU limit too.
 
 ### Services
 
