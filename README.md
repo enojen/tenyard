@@ -15,7 +15,8 @@ box runs belongs to Tenyard. Tenyard never knows what an image does, only how to
 ## What is here today
 
 - `install/`: how the cluster is set up, on one Hetzner server, with a rollback.
-- `task/`: one agent run as a Job on the task's volume, with the Secrets it reads.
+- `task/`: one agent run as a Job on the task's volume, with the Secrets it reads and the
+  services its tests need.
 
 Everything else (resource classes, snapshots, the autoscaler, the
 queue, the preview URLs, the resize controller) comes step by step; the README grows with
@@ -43,8 +44,8 @@ KUBECONFIG=~/.kube/tenyard.yaml task/run.sh TEN-451 "tenbox start TEN-451"
 PROJECT=demo REPO=https://github.com/me/demo.git task/run.sh DEMO-1 "tenbox build DEMO-1"
 ```
 
-`PROJECT`, `REPO`, `IMAGE` (`ghcr.io/enojen/tenbox-box:latest`), `CLASS` (`build`) and
-`NAMESPACE` (`tenbox`) are env. The Job is `task-<task>-<time>` with the labels `app: tenyard, task: <task>`; a task
+`PROJECT`, `REPO`, `IMAGE` (`ghcr.io/enojen/tenbox-box:latest`), `CLASS` (`build`),
+`SERVICES` (none) and `NAMESPACE` (`tenbox`) are env. The Job is `task-<task>-<time>` with the labels `app: tenyard, task: <task>`; a task
 has one run at a time (its volume mounts on one pod), so `run.sh` refuses while a Job of the
 task is active. The Job runs at most 8 hours, never retries, gets 60 seconds to stop, and is
 deleted 10 minutes after it ends. Its CPU and RAM come from a resource class (below). A Job
@@ -83,6 +84,23 @@ The box logs that peak as its last line, `tenbox-boot: memory peak <MiB> MiB, cp
 
 `install/limitrange.yaml` gives a container that names no resources, such as a pod made by
 hand on a task volume, the `plan` class.
+
+### Services
+
+A project whose tests need a database gets it as a service: a sidecar container in the pod of
+its Job, reached on `127.0.0.1`. A pod has no docker, but it can hold more containers. Each file
+in `task/services/` is one service, written as a strategic merge patch of the Job: the sidecar,
+its volumes and the env of the `box` container. The agent picks the services per Job (tenbox:
+`machine.services` of the project's `tenbox.yaml`, on `build` only); `run.sh` takes them as
+`SERVICES="postgres"` and applies each file with `kubectl patch --local`.
+
+| service | what | box env |
+|---|---|---|
+| `postgres` | `pgvector/pgvector:pg16`, data in memory, no flush; RAM 512Mi request, 1Gi limit | `TEST_PG_URL` |
+
+A sidecar is a native one, an init container with `restartPolicy: Always`: the box starts only
+after its startup probe passes, and the Job ends when the box ends. Its RAM is its own, on top of
+the class of the box; data in an `emptyDir` with `medium: Memory` counts in that RAM.
 
 The Job reads four Secrets in the namespace. `task/secrets.sh` writes the first three from the
 files on your computer (the agent's own login sync also writes the last two of them); the
