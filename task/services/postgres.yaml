@@ -1,8 +1,4 @@
-# Postgres for a project's tests, next to the box: a native sidecar (an init container that
-# keeps running), so the box starts once Postgres takes connections and the Job still ends when
-# the box ends. The data lives in memory and nothing is flushed: a test database is thrown away
-# with the pod. The box reaches it on TEST_PG_URL. A Job takes it as a strategic merge patch
-# (tenbox: `machine.services` of the project's tenbox.yaml; run.sh: SERVICES).
+# Postgres for the tests: a native sidecar, data in memory, nothing flushed.
 spec:
   template:
     spec:
