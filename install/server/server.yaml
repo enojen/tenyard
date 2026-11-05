@@ -4,6 +4,8 @@
 # The Service is reachable inside the cluster only: tokens travel over plain HTTP until TLS.
 # The server account reads nodes, and pods and Jobs of namespace tenbox: what it watches to
 # record workers and machine runs. It reads no Secret.
+# For each new worker the server asks Hetzner for its type and price with a read-only API
+# token: Secret `hcloud` in namespace tenbox-server, made by hand (install/README.md "Server").
 apiVersion: v1
 kind: Namespace
 metadata: { name: tenbox-server }
@@ -75,6 +77,9 @@ spec:
           image: ghcr.io/enojen/tenbox-server:latest
           imagePullPolicy: Always
           ports: [{ containerPort: 4300, name: http }]
+          env:
+            - name: HCLOUD_TOKEN
+              valueFrom: { secretKeyRef: { name: hcloud, key: token } }
           resources:
             requests: { cpu: 50m, memory: 128Mi }
             limits: { memory: 512Mi }
