@@ -113,7 +113,7 @@ agent writes the project Secret before each Job (tenbox: `tenbox machine run`):
 | `ghcr` | `.dockerconfigjson` | pull secret of the private image (a GitHub token with `read:packages`) |
 | `github-token` | `token` | `gh` and `git push` in the box |
 | `claude-credentials` | `credentials.json` | the claude.ai login, `~/.claude/.credentials.json` |
-| `project-<project id>` | `tracker_api_key`, `ntfy_url` | the project's tracker key and notification topic (both optional) |
+| `project-<project id>` | `tracker_api_key`, `ntfy_url`, `github_token` | the project's tracker key, notification topic and own GitHub token (all optional; the box prefers `github_token` over `github-token`) |
 
 What the box does with them is the image's business (tenbox `machines/k8s/boot.sh`).
 
