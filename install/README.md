@@ -165,6 +165,28 @@ From your computer, once, on a server set up with the steps above:
     its limit (2026-11-05). After a change of the cloud-init, run `autoscaler.sh` again; only new
     workers get it.
 
+## Metrics
+
+VictoriaMetrics single node keeps the cluster's metrics for a year, on the server next to the
+control plane (`install/monitoring/monitoring.yaml`). It scrapes every 30 s:
+
+- kube-state-metrics: what exists. Workers with their server type (`kube_node_labels`, label
+  `node.kubernetes.io/instance-type`) and creation time, box pods with their `task` and
+  `class` labels, their requests, start and end. The cost report counts paid and busy worker
+  hours from these.
+- cAdvisor of every kubelet, through the API server proxy: what a pod uses. CPU, working set
+  and RSS memory, CPU throttling and OOM events; nothing else, as cAdvisor has hundreds more.
+
+```
+kubectl apply -f install/monitoring/monitoring.yaml
+kubectl patch pv "$(kubectl -n monitoring get pvc victoria-metrics -o jsonpath='{.spec.volumeName}')" \
+  -p '{"spec":{"persistentVolumeReclaimPolicy":"Retain"}}'
+kubectl -n monitoring port-forward svc/victoria-metrics 8428   # then http://localhost:8428/vmui
+```
+
+The data lives on its own 10 GB Hetzner volume, kept with `Retain`, so it outlives the pod and
+the claim. Together the two pods ask for 150m and 320Mi of the server.
+
 ## Server
 
 The tenbox server (`server/` of enojen/tenbox, image `ghcr.io/enojen/tenbox-server`, private)
@@ -223,4 +245,6 @@ hcloud server rebuild --image <snapshot id> <server>
 | Hetzner CSI driver | v2.24.0 |
 | Hetzner cloud-controller-manager | v1.39.2 |
 | cluster-autoscaler | v1.36.1 |
+| VictoriaMetrics single node | v1.154.1 |
+| kube-state-metrics | v2.20.0 |
 | kubectl on the computer | v1.36.5 |

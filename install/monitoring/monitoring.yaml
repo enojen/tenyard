@@ -1,0 +1,156 @@
+# The metrics of the cluster, kept for a year: VictoriaMetrics single node scrapes
+# kube-state-metrics (what exists: nodes with their server type, pods with their task and class,
+# their requests, start and end) and the kubelet's cAdvisor on every node (what pods use: CPU,
+# memory, throttling, OOM). Both run on the server, next to the control plane; the data sits on
+# a Hetzner volume, so it outlives the pod. vmui on port 8428 answers queries
+# (`kubectl -n monitoring port-forward svc/victoria-metrics 8428`, then /vmui).
+apiVersion: v1
+kind: Namespace
+metadata: { name: monitoring }
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata: { name: victoria-metrics, namespace: monitoring }
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata: { name: victoria-metrics }
+rules:
+  - apiGroups: [""]
+    resources: [nodes, nodes/proxy, nodes/metrics]
+    verbs: [get, list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata: { name: victoria-metrics }
+roleRef: { apiGroup: rbac.authorization.k8s.io, kind: ClusterRole, name: victoria-metrics }
+subjects: [{ kind: ServiceAccount, name: victoria-metrics, namespace: monitoring }]
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: { name: victoria-metrics-scrape, namespace: monitoring }
+data:
+  scrape.yml: |
+    global:
+      scrape_interval: 30s
+    scrape_configs:
+      - job_name: kube-state-metrics
+        static_configs: [{ targets: [kube-state-metrics.monitoring.svc:8080] }]
+      # Through the API server proxy: the kubelets need no open port.
+      - job_name: cadvisor
+        scheme: https
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        tls_config: { ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt }
+        kubernetes_sd_configs: [{ role: node }]
+        relabel_configs:
+          - target_label: __address__
+            replacement: kubernetes.default.svc:443
+          - source_labels: [__meta_kubernetes_node_name]
+            regex: (.+)
+            target_label: __metrics_path__
+            replacement: /api/v1/nodes/$1/proxy/metrics/cadvisor
+        # Only what sizes a box and finds a slow or killed one; cAdvisor has hundreds more.
+        metric_relabel_configs:
+          - source_labels: [__name__]
+            action: keep
+            regex: container_(cpu_usage_seconds_total|memory_working_set_bytes|memory_rss|cpu_cfs_periods_total|cpu_cfs_throttled_periods_total|oom_events_total)
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata: { name: victoria-metrics, namespace: monitoring }
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: hcloud-volumes
+  resources: { requests: { storage: 10Gi } }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: victoria-metrics, namespace: monitoring }
+spec:
+  replicas: 1
+  strategy: { type: Recreate }
+  selector: { matchLabels: { app: victoria-metrics } }
+  template:
+    metadata: { labels: { app: victoria-metrics } }
+    spec:
+      serviceAccountName: victoria-metrics
+      nodeSelector: { node-role.kubernetes.io/control-plane: "true" }
+      tolerations: [{ key: node-role.kubernetes.io/control-plane, operator: Exists, effect: NoSchedule }]
+      containers:
+        - name: victoria-metrics
+          image: victoriametrics/victoria-metrics:v1.154.1
+          args:
+            - -storageDataPath=/storage
+            - -retentionPeriod=1y
+            - -promscrape.config=/config/scrape.yml
+            - -httpListenAddr=:8428
+          ports: [{ containerPort: 8428, name: http }]
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { memory: 1Gi }
+          volumeMounts:
+            - { name: storage, mountPath: /storage }
+            - { name: config, mountPath: /config, readOnly: true }
+          readinessProbe: { httpGet: { path: /health, port: http } }
+      volumes:
+        - { name: storage, persistentVolumeClaim: { claimName: victoria-metrics } }
+        - { name: config, configMap: { name: victoria-metrics-scrape } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: victoria-metrics, namespace: monitoring }
+spec:
+  selector: { app: victoria-metrics }
+  ports: [{ port: 8428, targetPort: http, name: http }]
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata: { name: kube-state-metrics, namespace: monitoring }
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata: { name: kube-state-metrics }
+rules:
+  - apiGroups: [""]
+    resources: [nodes, pods, persistentvolumes, persistentvolumeclaims, namespaces]
+    verbs: [list, watch]
+  - apiGroups: [batch]
+    resources: [jobs]
+    verbs: [list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata: { name: kube-state-metrics }
+roleRef: { apiGroup: rbac.authorization.k8s.io, kind: ClusterRole, name: kube-state-metrics }
+subjects: [{ kind: ServiceAccount, name: kube-state-metrics, namespace: monitoring }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: kube-state-metrics, namespace: monitoring }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: kube-state-metrics } }
+  template:
+    metadata: { labels: { app: kube-state-metrics } }
+    spec:
+      serviceAccountName: kube-state-metrics
+      nodeSelector: { node-role.kubernetes.io/control-plane: "true" }
+      tolerations: [{ key: node-role.kubernetes.io/control-plane, operator: Exists, effect: NoSchedule }]
+      containers:
+        - name: kube-state-metrics
+          image: registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.20.0
+          args:
+            - --resources=nodes,pods,jobs,persistentvolumes,persistentvolumeclaims,namespaces
+            # The labels the cost report groups by: a box's task and class, a worker's type.
+            - --metric-labels-allowlist=pods=[app,task,class],jobs=[app,task,class],nodes=[node.kubernetes.io/instance-type]
+          ports: [{ containerPort: 8080, name: http }]
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { memory: 256Mi }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: kube-state-metrics, namespace: monitoring }
+spec:
+  selector: { app: kube-state-metrics }
+  ports: [{ port: 8080, targetPort: http, name: http }]
