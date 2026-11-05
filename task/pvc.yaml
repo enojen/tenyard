@@ -4,7 +4,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: task-__NAME__
-  labels: { app: tenyard, task: __TASK__ }
+  labels: { app: tenyard, task: "__TASK__" }
 spec:
   accessModes: [ReadWriteOnce]
   resources: { requests: { storage: 10Gi } }

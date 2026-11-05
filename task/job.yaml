@@ -5,7 +5,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: task-__NAME__-__RUN__
-  labels: { app: tenyard, task: __TASK__ }
+  labels: { app: tenyard, task: "__TASK__" }
 spec:
   backoffLimit: 0
   # One run is one tenbox command and the session it leaves behind; 8 hours is a long one.
@@ -13,7 +13,7 @@ spec:
   ttlSecondsAfterFinished: 600
   template:
     metadata:
-      labels: { app: tenyard, task: __TASK__, class: __CLASS__ }
+      labels: { app: tenyard, task: "__TASK__", class: __CLASS__ }
     spec:
       restartPolicy: Never
       automountServiceAccountToken: false
@@ -35,6 +35,9 @@ spec:
                 __ENV__
             - name: GITHUB_TOKEN
               valueFrom: { secretKeyRef: { name: github-token, key: token } }
+            # A project's own token (tenbox#162); the box prefers it over GITHUB_TOKEN.
+            - name: PROJECT_GITHUB_TOKEN
+              valueFrom: { secretKeyRef: { name: project-__PROJECT_ID__, key: github_token, optional: true } }
             - name: CLAUDE_CREDENTIALS
               valueFrom: { secretKeyRef: { name: claude-credentials, key: credentials.json } }
             - name: TRACKER_API_KEY
