@@ -181,8 +181,13 @@ runs in namespace `tenbox-server` on the server, next to the control plane
   machine runs; it reads no Secret and creates nothing.
 - `enableServiceLinks: false`: else Kubernetes sets `TENBOX_SERVER_PORT=tcp://...` for the
   Service of the same name and the server reads it as its port.
+- `HCLOUD_TOKEN` from the Secret `hcloud`: a **read-only** Hetzner API token of the project.
+  The server asks Hetzner for the type, location and hourly price of each new worker. In the
+  cluster it does not start without it. Make a new token for it, not the CSI one (that one
+  can write).
 
 ```
+cat hcloud-readonly-token | kubectl -n tenbox-server create secret generic hcloud --from-file=token=/dev/stdin
 kubectl apply -f install/server/server.yaml
 kubectl -n tenbox get secret ghcr -o json \
   | jq '{apiVersion, kind, type, data, metadata: {name: .metadata.name, namespace: "tenbox-server"}}' \
