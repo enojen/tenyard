@@ -2,8 +2,8 @@
 # namespace, on the server next to the control plane. Its SQLite file sits on a Hetzner volume
 # kept with Retain; a CronJob writes a copy of it once a day to the same volume and keeps 7 days.
 # The Service is reachable inside the cluster only: tokens travel over plain HTTP until TLS.
-# The server account reads nodes, and pods and Jobs of namespace tenbox: what it watches to
-# record workers and machine runs. It reads no Secret.
+# The server account reads nodes, and pods, their logs and Jobs of namespace tenbox: what it
+# watches to record workers and machine runs. It reads no Secret.
 # For each new worker the server asks Hetzner for its type and price with a read-only API
 # token: Secret `hcloud` in namespace tenbox-server, made by hand (install/README.md "Server").
 apiVersion: v1
@@ -36,6 +36,10 @@ rules:
   - apiGroups: [""]
     resources: [pods]
     verbs: [get, list, watch]
+  # The box's last log line counts the processes killed by OOM inside a container that lived on.
+  - apiGroups: [""]
+    resources: [pods/log]
+    verbs: [get]
   - apiGroups: [batch]
     resources: [jobs]
     verbs: [get, list, watch]
