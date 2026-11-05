@@ -187,6 +187,40 @@ kubectl -n monitoring port-forward svc/victoria-metrics 8428   # then http://loc
 The data lives on its own 10 GB Hetzner volume, kept with `Retain`, so it outlives the pod and
 the claim. Together the two pods ask for 150m and 320Mi of the server.
 
+## Server
+
+The tenbox server (`server/` of enojen/tenbox, image `ghcr.io/enojen/tenbox-server`, private)
+runs in namespace `tenbox-server` on the server, next to the control plane
+(`install/server/server.yaml`):
+
+- Its SQLite file is `/data/server.db` on a 10 GB Hetzner volume kept with `Retain`.
+- The CronJob `backup` writes `/data/backups/server-<date>.db` at 03:00 UTC with
+  `tenbox-server backup` (read-only, no migration) and deletes copies older than 7 days. The
+  copies sit on the same volume: they cover a broken database, not a lost volume.
+- The Service `tenbox-server:4300` answers inside the cluster only; tokens travel over plain
+  HTTP until TLS.
+- Its account reads nodes, and pods and Jobs of namespace `tenbox`, to record workers and
+  machine runs; it reads no Secret and creates nothing.
+- `enableServiceLinks: false`: else Kubernetes sets `TENBOX_SERVER_PORT=tcp://...` for the
+  Service of the same name and the server reads it as its port.
+- `HCLOUD_TOKEN` from the Secret `hcloud`: a **read-only** Hetzner API token of the project.
+  The server asks Hetzner for the type, location and hourly price of each new worker. In the
+  cluster it does not start without it. Make a new token for it, not the CSI one (that one
+  can write).
+
+```
+cat hcloud-readonly-token | kubectl -n tenbox-server create secret generic hcloud --from-file=token=/dev/stdin
+kubectl apply -f install/server/server.yaml
+kubectl -n tenbox get secret ghcr -o json \
+  | jq '{apiVersion, kind, type, data, metadata: {name: .metadata.name, namespace: "tenbox-server"}}' \
+  | kubectl apply -f -
+kubectl patch pv "$(kubectl -n tenbox-server get pvc tenbox-server -o jsonpath='{.spec.volumeName}')" \
+  -p '{"spec":{"persistentVolumeReclaimPolicy":"Retain"}}'
+kubectl get --raw /api/v1/namespaces/tenbox-server/services/tenbox-server:4300/proxy/health
+```
+
+A new image needs `kubectl -n tenbox-server rollout restart deploy/tenbox-server`.
+
 ## Check
 
 `install/check.sh` runs a pod that writes a file to a new volume, reads it back, reaches

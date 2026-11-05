@@ -1,0 +1,130 @@
+# The tenbox server (enojen/tenbox `server/`, image ghcr.io/enojen/tenbox-server) in its own
+# namespace, on the server next to the control plane. Its SQLite file sits on a Hetzner volume
+# kept with Retain; a CronJob writes a copy of it once a day to the same volume and keeps 7 days.
+# The Service is reachable inside the cluster only: tokens travel over plain HTTP until TLS.
+# The server account reads nodes, and pods and Jobs of namespace tenbox: what it watches to
+# record workers and machine runs. It reads no Secret.
+# For each new worker the server asks Hetzner for its type and price with a read-only API
+# token: Secret `hcloud` in namespace tenbox-server, made by hand (install/README.md "Server").
+apiVersion: v1
+kind: Namespace
+metadata: { name: tenbox-server }
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata: { name: tenbox-server, namespace: tenbox-server }
+imagePullSecrets: [{ name: ghcr }]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata: { name: tenbox-server-nodes }
+rules:
+  - apiGroups: [""]
+    resources: [nodes]
+    verbs: [get, list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata: { name: tenbox-server-nodes }
+roleRef: { apiGroup: rbac.authorization.k8s.io, kind: ClusterRole, name: tenbox-server-nodes }
+subjects: [{ kind: ServiceAccount, name: tenbox-server, namespace: tenbox-server }]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata: { name: tenbox-server-runs, namespace: tenbox }
+rules:
+  - apiGroups: [""]
+    resources: [pods]
+    verbs: [get, list, watch]
+  - apiGroups: [batch]
+    resources: [jobs]
+    verbs: [get, list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata: { name: tenbox-server-runs, namespace: tenbox }
+roleRef: { apiGroup: rbac.authorization.k8s.io, kind: Role, name: tenbox-server-runs }
+subjects: [{ kind: ServiceAccount, name: tenbox-server, namespace: tenbox-server }]
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata: { name: tenbox-server, namespace: tenbox-server }
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: hcloud-volumes
+  resources: { requests: { storage: 10Gi } }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: tenbox-server, namespace: tenbox-server }
+spec:
+  replicas: 1
+  strategy: { type: Recreate }
+  selector: { matchLabels: { app: tenbox-server } }
+  template:
+    metadata: { labels: { app: tenbox-server } }
+    spec:
+      serviceAccountName: tenbox-server
+      # Else Kubernetes sets TENBOX_SERVER_PORT=tcp://... for the Service of the same name, and
+      # the server reads it as its port.
+      enableServiceLinks: false
+      nodeSelector: { node-role.kubernetes.io/control-plane: "true" }
+      tolerations: [{ key: node-role.kubernetes.io/control-plane, operator: Exists, effect: NoSchedule }]
+      # The image runs as user bun (1000); the volume must be its group's.
+      securityContext: { fsGroup: 1000 }
+      containers:
+        - name: server
+          image: ghcr.io/enojen/tenbox-server:latest
+          imagePullPolicy: Always
+          ports: [{ containerPort: 4300, name: http }]
+          env:
+            - name: HCLOUD_TOKEN
+              valueFrom: { secretKeyRef: { name: hcloud, key: token } }
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { memory: 512Mi }
+          readinessProbe: { httpGet: { path: /health, port: http } }
+          volumeMounts: [{ name: data, mountPath: /data }]
+      volumes: [{ name: data, persistentVolumeClaim: { claimName: tenbox-server } }]
+---
+apiVersion: v1
+kind: Service
+metadata: { name: tenbox-server, namespace: tenbox-server }
+spec:
+  selector: { app: tenbox-server }
+  ports: [{ port: 4300, targetPort: http, name: http }]
+---
+# The volume attaches to one server, so the backup runs on the same node as the server pod.
+apiVersion: batch/v1
+kind: CronJob
+metadata: { name: backup, namespace: tenbox-server }
+spec:
+  schedule: "0 3 * * *"
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      ttlSecondsAfterFinished: 86400
+      template:
+        spec:
+          restartPolicy: Never
+          serviceAccountName: tenbox-server
+          automountServiceAccountToken: false
+          enableServiceLinks: false
+          nodeSelector: { node-role.kubernetes.io/control-plane: "true" }
+          tolerations: [{ key: node-role.kubernetes.io/control-plane, operator: Exists, effect: NoSchedule }]
+          securityContext: { fsGroup: 1000 }
+          containers:
+            - name: backup
+              image: ghcr.io/enojen/tenbox-server:latest
+              imagePullPolicy: Always
+              command: [sh, -c]
+              args:
+                - >-
+                  tenbox-server backup --to "/data/backups/server-$(date -u +%Y-%m-%d).db" &&
+                  find /data/backups -name 'server-*.db' -mtime +7 -delete
+              resources:
+                requests: { cpu: 50m, memory: 64Mi }
+                limits: { memory: 256Mi }
+              volumeMounts: [{ name: data, mountPath: /data }]
+          volumes: [{ name: data, persistentVolumeClaim: { claimName: tenbox-server } }]
