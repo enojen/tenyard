@@ -199,8 +199,9 @@ runs in namespace `tenbox-server` on the server, next to the control plane
   copies sit on the same volume: they cover a broken database, not a lost volume.
 - The Service `tenbox-server:4300` answers inside the cluster only; tokens travel over plain
   HTTP until TLS.
-- Its account reads nodes, and pods and Jobs of namespace `tenbox`, to record workers and
-  machine runs; it reads no Secret and creates nothing.
+- Its account reads nodes, and pods, their logs and Jobs of namespace `tenbox`, to record
+  workers and machine runs: the box's last log line counts the processes killed by OOM inside
+  a container that lived on. It reads no Secret and creates nothing.
 - `enableServiceLinks: false`: else Kubernetes sets `TENBOX_SERVER_PORT=tcp://...` for the
   Service of the same name and the server reads it as its port.
 - `HCLOUD_TOKEN` from the Secret `hcloud`: a **read-only** Hetzner API token of the project.
