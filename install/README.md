@@ -158,6 +158,13 @@ From your computer, once, on a server set up with the steps above:
     The worker joins with a bootstrap token (`k3s token create`), which can join workers only;
     it is in the Secret `tenyard-autoscaler` and in each worker's cloud-init.
 
+    The kubelet of a worker keeps 1 GiB and 250m out of the boxes (`system-reserved`
+    768Mi, eviction under 256Mi free): a cx43 or cpx42 holds 7 `build` boxes, a cpx32 3. With
+    no reserve, boxes that fill their requests take the whole RAM: on a cpx42 with 6 `build` and
+    2 `plan` boxes at their limit, the kernel killed the CSI node plugin and a `plan` box under
+    its limit (2026-11-05). After a change of the cloud-init, run `autoscaler.sh` again; only new
+    workers get it.
+
 ## Check
 
 `install/check.sh` runs a pod that writes a file to a new volume, reads it back, reaches
