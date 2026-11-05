@@ -27,6 +27,7 @@ spec:
             - { name: TENBOX_TASK, value: "__TASK__" }
             - { name: TENBOX_PROJECT, value: "__PROJECT__" }
             - { name: TENBOX_REPO, value: "__REPO__" }
+            - { name: TENBOX_BASE, value: "__BASE__" }
             - name: TENBOX_CMD
               value: |-
                 __CMD__

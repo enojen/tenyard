@@ -7,9 +7,10 @@
 #   PROJECT=demo REPO=https://github.com/me/demo.git run.sh DEMO-1 "tenbox build DEMO-1"
 #
 # Env: PROJECT (tenbox), PROJECT_ID (xathah, the id in its tenbox.yaml), REPO
-# (https://github.com/enojen/tenbox.git), IMAGE (ghcr.io/enojen/tenbox-box:latest), BOX_ENV
-# ({}, the project's variables as one JSON object), CLASS (build, a class of classes.yaml),
-# SERVICES (none; names of files in services/, space-separated), NAMESPACE (tenbox). run.sh
+# (https://github.com/enojen/tenbox.git), BASE (main, the branch the box clones), IMAGE
+# (ghcr.io/enojen/tenbox-box:latest), BOX_ENV ({}, the project's variables as one JSON
+# object), CLASS (build, a class of classes.yaml), SERVICES (none; names of files in
+# services/, space-separated), NAMESPACE (tenbox). run.sh
 # does not write the project Secret: a Job before it from `tenbox machine run` did, or the box
 # runs without a tracker key and ntfy URL.
 set -euo pipefail
@@ -20,6 +21,7 @@ cmd="${2:?tenbox command}"
 project="${PROJECT:-tenbox}"
 project_id="${PROJECT_ID:-xathah}"
 repo="${REPO:-https://github.com/enojen/tenbox.git}"
+base="${BASE:-main}"
 image="${IMAGE:-ghcr.io/enojen/tenbox-box:latest}"
 box_env="${BOX_ENV:-"{}"}"
 class="${CLASS:-build}"
@@ -41,7 +43,8 @@ fill() {
   local text; text="$(< "$here/$1")"
   text="${text//__NAME__/$name}"; text="${text//__TASK__/$task}"; text="${text//__RUN__/$run}"
   text="${text//__PROJECT__/$project}"; text="${text//__PROJECT_ID__/$project_id}"
-  text="${text//__REPO__/$repo}"; text="${text//__IMAGE__/$image}"; text="${text//__ENV__/$box_env}"
+  text="${text//__REPO__/$repo}"; text="${text//__BASE__/$base}"; text="${text//__IMAGE__/$image}"
+  text="${text//__ENV__/$box_env}"
   text="${text//__CLASS__/$class}"
   text="${text//__CPU__/$cpu}"; text="${text//__MEMORY__/$memory}"
   printf '%s\n' "${text//__CMD__/$cmd}"
