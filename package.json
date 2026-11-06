@@ -1,0 +1,10 @@
+{
+  "name": "tenyard",
+  "private": true,
+  "type": "module",
+  "devDependencies": {
+    "@biomejs/biome": "2.5.15",
+    "@types/bun": "latest",
+    "@typescript/native-preview": "7.0.0-dev.20260707.2"
+  }
+}

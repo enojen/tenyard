@@ -1,0 +1,31 @@
+{
+  "formatter": { "indentStyle": "space", "indentWidth": 2, "lineWidth": 100 },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true,
+      "style": {
+        "noMagicNumbers": "error",
+        "noNonNullAssertion": "error",
+        "noParameterAssign": "error",
+        "noNestedTernary": "error",
+        "noDefaultExport": "error"
+      },
+      "suspicious": { "noExplicitAny": "error", "useAwait": "error" },
+      "complexity": { "noForEach": "error", "noExcessiveCognitiveComplexity": "error" },
+      "correctness": {
+        "noUnusedImports": "error",
+        "noUnusedVariables": "error",
+        "noUnusedFunctionParameters": "error"
+      }
+    }
+  },
+  "overrides": [
+    {
+      "includes": ["**/*.test.ts"],
+      "linter": {
+        "rules": { "style": { "noMagicNumbers": "off" }, "suspicious": { "useAwait": "off" } }
+      }
+    }
+  ]
+}
