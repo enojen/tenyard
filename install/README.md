@@ -226,6 +226,22 @@ kubectl apply -k install/monitoring/grafana
 kubectl -n monitoring port-forward svc/grafana 3000   # then http://localhost:3000, user admin
 ```
 
+On the tailnet (#59) Grafana is `https://grafana.<tailnet>.ts.net`, from any device of the
+tailnet and from nowhere else: `install/monitoring/tailnet.yaml` runs one Tailscale node
+`grafana` in userspace mode (no privilege) that serves HTTPS to the Grafana Service. Once, in the
+Tailscale admin console: turn on MagicDNS and HTTPS certificates (DNS), add
+`"tagOwners": { "tag:k8s": ["autogroup:admin"] }` to the access controls, and make an auth key
+(not reusable, not ephemeral, tag `tag:k8s`). Then, in your own terminal so the key stays out of
+any log:
+
+```
+read -rs K; kubectl -n monitoring create secret generic tailscale-auth --from-literal=TS_AUTHKEY="$K"; unset K
+kubectl apply -f install/monitoring/tailnet.yaml
+```
+
+The key is used once: the node key then lives in Secret `tailscale-grafana`, and a tagged node
+does not expire. Delete `tailscale-auth` after the first start if you like.
+
 ## Server
 
 The tenbox server (`server/` of enojen/tenbox, image `ghcr.io/enojen/tenbox-server`, private)
