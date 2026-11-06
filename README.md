@@ -137,6 +137,12 @@ Its counters run from the pod's start, and the sidecar stays 15 s after the box 
 (`preStop`), so the last scrape reads the end. process-exporter, which counts only the processes
 alive at a scrape, saw 19 % of a box's CPU on a check run of tenbox (2026-11-06).
 
+Memory is each process's anonymous resident memory, its heap and stacks: resident less shared in
+`/proc/<pid>/statm`, the `RssAnon` of `status`. Its sum over a group is what the group's own
+cgroup counts as `anon`. Resident memory (RSS) would count a shared page of a file, the bun binary
+and its libraries, once in every process: on a `bun test` run the RSS sum was 2.6 times the
+group's real memory. The file cache is not in any group; cAdvisor has it for the pod.
+
 `procs/groups.conf`, inside the image, puts each process into the first group whose rule matches
 its command line. Below a sticky group every descendant stays in it (a whole test run is `test`,
 also the git it calls); below an open group a descendant that matches a rule takes that group,
@@ -154,8 +160,8 @@ and one that matches none stays in its parent's group:
 | `service` | sticky | the sidecars of `task/services/` |
 | `other` | open | boot.sh, sudo, its poll of the sessions, the pause process, procs itself |
 
-The series are `tenyard_procs_cpu_seconds_total`, `tenyard_procs_resident_bytes`,
-`tenyard_procs_resident_peak_bytes` (the highest group sum at any read) and
+The series are `tenyard_procs_cpu_seconds_total`, `tenyard_procs_anon_bytes`,
+`tenyard_procs_anon_peak_bytes` (the highest group sum at any read) and
 `tenyard_procs_processes`, per `group`, with the pod labels `task`, `project`, `command` and
 `class`.
 
@@ -174,25 +180,43 @@ commands, 85-123 s of CPU). Four runs, 2026-11-06:
 The small groups trade a few tenths of a second: a git call of claude that lives less than one
 read counts as claude, the group of its parent.
 
+Memory on the same runs, with the memory controller on each child cgroup: its `anon` read every
+50 or 200 ms next to procs at 100 ms, compared at the same instant (the area: the sum over all
+reads) and at the highest read. Four runs, 2026-11-06:
+
+| | area | peak | peak of the RSS sum |
+|---|---|---|---|
+| all groups (607-625 MiB) | 99.0-100.1 % | 99.6-101.5 % | 162-173 % |
+| test (377-423 MiB) | 99.8-101.0 % | 88.3-100.2 % | 260 % |
+| tsc (539-549 MiB) | 95.3-100.3 % | 99.5-101.5 % | 106 % |
+| git, claude (about 1 MiB) | 107-154 % | 97-142 % | 900-1600 % |
+
+The 88.3 % is a run that read procs every 200 ms and so skipped half of its reads at the test
+run's short top. procs's own `tenyard_procs_anon_peak_bytes`, which keeps the top of every read,
+against the truth read every 50 ms: test 420 of 423 MiB, tsc 542 of 543 MiB. The small groups
+are off by less than 1 MiB.
+
 On the cluster, a box that ran tenbox's checks three times and its e2e tests (2026-11-06): the
 groups summed to 108.48 s, cAdvisor's CPU of the pod to 108.54 s (99.9 %): test 87.3, tsc 12.5,
 lint 4.3, other 2.2, install 1.5, git 0.4, tenbox 0.2. procs itself used 0.9 s of CPU in the 2.6
 minutes and 1 MiB.
 
 The sidecar is not a way into the box. It runs as user 65534 with no capabilities, no privilege
-escalation and a read-only root file system, so it reads the `stat` and `cmdline` of the box's
-processes but not their `environ`, `io` or files (`/proc/<pid>/root`); a root sidecar in the
-same pod reads the env of the box's boot process, which holds the tokens (tested 2026-11-06). It
-exports group names only, never a command line. It asks for 10m CPU and 8Mi, limit 32Mi, on top
-of the class of the box; it holds about 2 MB. A broken groups file never stops the box: every
+escalation and a read-only root file system, so it reads the `stat`, `statm` and `cmdline` of the
+box's processes but not their `environ`, `io` or files (`/proc/<pid>/root`); a root sidecar in
+the same pod reads the env of the box's boot process, which holds the tokens (tested 2026-11-06).
+It exports group names only, never a command line. It asks for 10m CPU and 8Mi, limit 32Mi, on
+top of the class of the box; it holds about 2 MB. A broken groups file never stops the box: every
 process is then `other`.
 
 Known limits:
 
 - A process reaped by a parent that is not in the pod, or that ignores its children, loses the
   CPU it had after its last read.
-- The RSS sum of a group is not the cgroup's peak: shared pages count twice, the file cache not
-  at all.
+- Memory is anonymous only: the file cache, the kernel's own memory of the pod (page tables,
+  sockets) and shared memory (`/dev/shm`, a database's shared buffers) are in no group. cAdvisor
+  counts the pod's cgroup, which holds them all.
+- A peak shorter than one read (100 ms) is missed.
 - The planner, worker and reviewer subagents share one `claude` process and are not split.
 - PID 1 of the pod is the pause process, not boot.sh. So boot.sh ends at once on the `SIGTERM`
   of a deleted pod; as PID 1 it ignored the signal and ran on until it ended by itself or the

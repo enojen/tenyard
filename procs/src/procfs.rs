@@ -5,7 +5,7 @@ use std::path::Path;
 
 /// `/proc/<pid>/stat` counts CPU in clock ticks of USER_HZ, which is 100 on Linux.
 const TICK_MICROS: u64 = 10_000;
-/// `rss` of `/proc/<pid>/stat` counts pages; 4 KiB on the x86_64 and arm64 kernels we run.
+/// `/proc/<pid>/statm` counts pages; 4 KiB on the x86_64 and arm64 kernels we run.
 const PAGE_BYTES: u64 = 4096;
 
 /// A process is its pid and its start time: a reused pid is another process.
@@ -25,8 +25,9 @@ pub struct Proc {
     pub own: u64,
     /// The CPU of its children it has reaped: cutime + cstime, in microseconds.
     pub child: u64,
-    /// Resident memory in bytes.
-    pub rss: u64,
+    /// Its anonymous resident memory (heap, stacks) in bytes: what it holds that is not a page of
+    /// a file. Resident memory would count a shared file page, the bun binary, in every process.
+    pub anon: u64,
 }
 
 /// The fields of `/proc/<pid>/stat` that `account` uses.
@@ -37,7 +38,6 @@ pub struct Stat {
     pub own: u64,
     pub child: u64,
     pub start: u64,
-    pub rss: u64,
 }
 
 /// Parses one `/proc/<pid>/stat` line. The comm can hold spaces and parentheses, so the
@@ -60,8 +60,16 @@ pub fn parse_stat(text: &str) -> Option<Stat> {
         own: (field(14)? + field(15)?) * TICK_MICROS,
         child: (field(16)? + field(17)?) * TICK_MICROS,
         start: field(22)?,
-        rss: field(24)? * PAGE_BYTES,
     })
+}
+
+/// The anonymous resident memory of one `/proc/<pid>/statm` line, in bytes: resident (field 2)
+/// less shared (field 3), which counts the resident pages of files and of shared memory.
+pub fn parse_statm(text: &str) -> Option<u64> {
+    let mut fields = text.split_ascii_whitespace().skip(1);
+    let resident: u64 = fields.next()?.parse().ok()?;
+    let shared: u64 = fields.next()?.parse().ok()?;
+    Some(resident.saturating_sub(shared) * PAGE_BYTES)
 }
 
 /// Joins the NUL-separated words of `/proc/<pid>/cmdline`.
@@ -106,6 +114,10 @@ pub fn snapshot(root: &Path, cgroup: Option<&str>) -> Vec<Proc> {
         else {
             continue;
         };
+        let anon = fs::read_to_string(dir.join("statm"))
+            .ok()
+            .and_then(|t| parse_statm(&t))
+            .unwrap_or(0);
         let words = fs::read(dir.join("cmdline"))
             .map(|b| parse_cmdline(&b))
             .unwrap_or_default();
@@ -123,7 +135,7 @@ pub fn snapshot(root: &Path, cgroup: Option<&str>) -> Vec<Proc> {
             cmd,
             own: stat.own,
             child: stat.child,
-            rss: stat.rss,
+            anon,
         });
     }
     procs
@@ -143,7 +155,15 @@ mod tests {
         assert_eq!(stat.own, 2_000_000);
         assert_eq!(stat.child, 500_000);
         assert_eq!(stat.start, 98765);
-        assert_eq!(stat.rss, 2500 * 4096);
+    }
+
+    #[test]
+    fn anon_memory_is_resident_less_shared() {
+        assert_eq!(
+            parse_statm("1000000 2500 900 50 0 3000 0\n"),
+            Some(1600 * 4096)
+        );
+        assert_eq!(parse_statm("1000000"), None);
     }
 
     #[test]
@@ -171,6 +191,7 @@ mod tests {
         fs::create_dir_all(root.join("4242")).unwrap();
         fs::write(root.join("4242/stat"), STAT).unwrap();
         fs::write(root.join("4242/cmdline"), b"bun\0test\0").unwrap();
+        fs::write(root.join("4242/statm"), "1000000 2500 900 50 0 3000 0\n").unwrap();
         fs::create_dir_all(root.join("7")).unwrap();
         fs::write(
             root.join("7/stat"),
@@ -185,6 +206,8 @@ mod tests {
         procs.sort_by_key(|p| p.key.pid);
         let cmds: Vec<&str> = procs.iter().map(|p| p.cmd.as_str()).collect();
         assert_eq!(cmds, ["[pause]", "bun test"]);
+        let anon: Vec<u64> = procs.iter().map(|p| p.anon).collect();
+        assert_eq!(anon, [0, 1600 * 4096]);
         fs::remove_dir_all(&root).unwrap();
     }
 }

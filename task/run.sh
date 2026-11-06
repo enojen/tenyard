@@ -69,7 +69,9 @@ echo "job $job: waiting for the pod" >&2
 kubectl -n "$ns" wait pod -l "job-name=$job" --for=jsonpath='{.status.phase}'=Running --timeout=600s > /dev/null \
   || kubectl -n "$ns" get pod -l "job-name=$job" >&2
 kubectl -n "$ns" logs -f "job/$job" || true
-kubectl -n "$ns" wait "job/$job" --for=condition=complete --timeout=10s > /dev/null 2>&1 \
+# The log ends with the box; the processes sidecar stays 15 s more (preStop in job.yaml), and the
+# Job completes only when it ends too.
+kubectl -n "$ns" wait "job/$job" --for=condition=complete --timeout=60s > /dev/null 2>&1 \
   && { echo "job $job: completed" >&2; exit 0; }
 echo "job $job: failed" >&2
 kubectl -n "$ns" get "job/$job" -o jsonpath='{.status.conditions[*].message}' >&2; echo >&2
