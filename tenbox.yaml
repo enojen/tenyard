@@ -1,0 +1,14 @@
+project: tenyard
+setup: bun install
+
+# sim/ is the only code: the replay of recorded runs through worker policies (#32).
+checks:
+  fast:
+    # sim/ is empty until the first part of #32: each check passes on no file.
+    types: '[ -z "$(find sim -name "*.ts")" ] || bunx tsgo --noEmit'
+    unit: bun test sim --pass-with-no-tests
+    format: bunx biome format --no-errors-on-unmatched sim
+    lint: bunx biome check --formatter-enabled=false --no-errors-on-unmatched sim
+
+tracker: { kind: github }
+id: 3ic9c0
