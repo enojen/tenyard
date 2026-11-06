@@ -43,6 +43,10 @@ rules:
   - apiGroups: [batch]
     resources: [jobs]
     verbs: [get, list, watch]
+  # The task volumes, for the volume events of the cost report (enojen/tenbox#187).
+  - apiGroups: [""]
+    resources: [persistentvolumeclaims]
+    verbs: [get, list]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
