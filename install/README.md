@@ -257,7 +257,10 @@ runs in namespace `tenbox-server` on the server, next to the control plane
 - Its account reads nodes, and pods, their logs, Jobs and volume claims of namespace `tenbox`,
   to record workers, machine runs and task volumes: the box's last log line counts the
   processes killed by OOM inside a container that lived on. It reads no Secret and creates
-  nothing.
+  nothing. It deletes one thing: the volume claim of a task whose `tenbox close` ended with
+  exit code 0, 3 days after the close (`TENBOX_SERVER_VOLUME_GRACE_DAYS`; enojen/tenbox#212).
+- `TENBOX_SERVER_NTFY` from the Secret `ntfy` (key `url`, optional): the ntfy topic URL for the
+  notice about an open task's volume with no run for 7 days. Without the Secret no notice goes.
 - `enableServiceLinks: false`: else Kubernetes sets `TENBOX_SERVER_PORT=tcp://...` for the
   Service of the same name and the server reads it as its port.
 - `HCLOUD_TOKEN` from the Secret `hcloud`: a **read-only** Hetzner API token of the project.
@@ -267,6 +270,7 @@ runs in namespace `tenbox-server` on the server, next to the control plane
 
 ```
 cat hcloud-readonly-token | kubectl -n tenbox-server create secret generic hcloud --from-file=token=/dev/stdin
+read -rs U; kubectl -n tenbox-server create secret generic ntfy --from-literal=url="$U"; unset U
 kubectl apply -f install/server/server.yaml
 kubectl -n tenbox get secret ghcr -o json \
   | jq '{apiVersion, kind, type, data, metadata: {name: .metadata.name, namespace: "tenbox-server"}}' \
