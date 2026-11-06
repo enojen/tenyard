@@ -141,8 +141,8 @@ spec:
           image: registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.20.0
           args:
             - --resources=nodes,pods,jobs,persistentvolumes,persistentvolumeclaims,namespaces
-            # The labels the cost report groups by: a box's task, project, class and tenbox command
-            # (command once tenbox fills it), a worker's type.
+            # The labels the cost report groups by: a box's task, project, class and tenbox command,
+            # a worker's type.
             - --metric-labels-allowlist=pods=[app,task,project,class,command],jobs=[app,task,project,class,command],nodes=[node.kubernetes.io/instance-type]
           ports: [{ containerPort: 8080, name: http }]
           resources:

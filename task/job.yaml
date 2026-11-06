@@ -5,7 +5,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: task-__NAME__-__RUN__
-  labels: { app: tenyard, task: "__TASK__", project: "__PROJECT__" }
+  labels: { app: tenyard, task: "__TASK__", project: "__PROJECT__", command: "__COMMAND__" }
 spec:
   backoffLimit: 0
   # One run is one tenbox command and the session it leaves behind; 8 hours is a long one.
@@ -13,7 +13,7 @@ spec:
   ttlSecondsAfterFinished: 600
   template:
     metadata:
-      labels: { app: tenyard, task: "__TASK__", project: "__PROJECT__", class: __CLASS__ }
+      labels: { app: tenyard, task: "__TASK__", project: "__PROJECT__", class: __CLASS__, command: "__COMMAND__" }
       # A running agent is never moved: the Job does not retry and its session would be lost.
       annotations: { cluster-autoscaler.kubernetes.io/safe-to-evict: "false" }
     spec:
