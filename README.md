@@ -157,8 +157,9 @@ and one that matches none stays in its parent's group:
 | `lint` | sticky | biome, eslint, oxlint, prettier, knip |
 | `install` | sticky | `bun`, `npm`, `pnpm`, `yarn` `install`, `ci`, `i`, `add` |
 | `git` | sticky | git and its helpers |
+| `procs` | open | procs itself, in its own sidecar |
 | `service` | sticky | the sidecars of `task/services/` |
-| `other` | open | boot.sh, sudo, its poll of the sessions, the pause process, procs itself |
+| `other` | open | boot.sh, sudo, its poll of the sessions, the pause process |
 
 The series are `tenyard_procs_cpu_seconds_total`, `tenyard_procs_anon_bytes`,
 `tenyard_procs_anon_peak_bytes` (the highest group sum at any read) and

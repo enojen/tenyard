@@ -165,4 +165,13 @@ mod tests {
     fn the_shipped_groups_file_parses() {
         Rules::parse(include_str!("../groups.conf")).unwrap();
     }
+
+    #[test]
+    fn the_shipped_groups_file_puts_procs_in_its_own_group() {
+        let rules = Rules::parse(include_str!("../groups.conf")).unwrap();
+        assert_eq!(
+            rules.classify("/procs --interval-ms 100", None),
+            group("procs", false)
+        );
+    }
 }
