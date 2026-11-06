@@ -27,7 +27,7 @@ spec:
         # A native sidecar: it ends when the box ends. Another user with no capabilities, so it
         # reads the stat and cmdline of the box's processes but not their env or files.
         - name: processes
-          image: ghcr.io/enojen/tenyard-procs:e71e9168d656a91fba7adb2664e42f80195dca52@sha256:7b9b45e92550a8bd0820ad5467c62a09ef1b989f5272c325d649a7947f21d88b
+          image: ghcr.io/enojen/tenyard-procs:6705d2c81debf4775a373c19f4106a4adf6e1a53@sha256:f13d91a67e94822ba3d731ec9aa7c207c50812c435ad0adcb937c3d3ed2a4db6
           restartPolicy: Always
           args: [--interval-ms, "100"]
           # The box has ended: stay 15 s more, so a 10 s scrape still reads the last counters.
