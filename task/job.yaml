@@ -21,6 +21,28 @@ spec:
       automountServiceAccountToken: false
       terminationGracePeriodSeconds: 60
       imagePullSecrets: [{ name: ghcr }]
+      # The process-exporter sees the box's processes (README, "Process metrics").
+      shareProcessNamespace: true
+      initContainers:
+        # A native sidecar: it ends when the box ends. Another user with no capabilities, so it
+        # reads the stat, status and cmdline of the box's processes but not their env or files.
+        - name: processes
+          image: ncabatoff/process-exporter:v0.8.7@sha256:bc2363ff7e05ada1b2a694f06c43dc824dc26cd6e487b5d36b66b1a40df4e842
+          restartPolicy: Always
+          args: [-config.path=/config/groups.yaml, -threads=false, -gather-smaps=false]
+          ports: [{ name: process-metrics, containerPort: 9256 }]
+          securityContext:
+            runAsUser: 65534
+            runAsGroup: 65534
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          resources:
+            requests: { cpu: 10m, memory: 32Mi }
+            limits: { memory: 64Mi }
+          volumeMounts:
+            - { name: process-groups, mountPath: /config, readOnly: true }
       containers:
         - name: box
           image: __IMAGE__
@@ -56,3 +78,5 @@ spec:
       volumes:
         - name: home
           persistentVolumeClaim: { claimName: task-__NAME__ }
+        - name: process-groups
+          configMap: { name: process-groups }

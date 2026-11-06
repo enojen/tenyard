@@ -120,6 +120,59 @@ agent writes the project Secret before each Job (tenbox: `tenbox machine run`):
 
 What the box does with them is the image's business (tenbox `machines/k8s/boot.sh`).
 
+### Process metrics
+
+cAdvisor sees a box as one cgroup: claude, the tests, `tsc` and the installs are one number.
+To see which of them uses the CPU and the RAM, every box pod has a second native sidecar,
+`processes`: [process-exporter](https://github.com/ncabatoff/process-exporter) v0.8.7, pinned
+by digest, on port 9256. The pod shares one process namespace (`shareProcessNamespace`), so
+the sidecar sees the box's processes. VictoriaMetrics scrapes it every 10 s
+(`install/README.md`, "Metrics").
+
+`task/process-groups.yaml` (a ConfigMap in namespace `tenbox`) puts each process into the first
+group whose rule matches its command line; a process that matches none counts in the group of
+its nearest matched parent:
+
+| group | what |
+|---|---|
+| `claude` | claude and the tool commands it runs that match no other group |
+| `tenbox` | the tenbox CLI |
+| `test` | `bun test`, vitest, jest, mocha, playwright, `npm`/`pnpm`/`yarn`/`bun` `test` |
+| `tsc` | `tsc`, `tsgo`, `vue-tsc` |
+| `lint` | biome, eslint, oxlint, prettier, knip |
+| `install` | `bun`, `npm`, `pnpm`, `yarn` `install`, `ci`, `i`, `add` |
+| `git` | git and its helpers |
+| `service` | the sidecars of `task/services/` |
+| `other` | boot.sh, sudo, its poll of the sessions, the pause process, the exporter itself |
+
+The series are `namedprocess_namegroup_cpu_seconds_total`,
+`namedprocess_namegroup_memory_bytes{memtype="resident"}` and
+`namedprocess_namegroup_num_procs`, with the pod labels `task`, `project`, `command` and `class`.
+
+The sidecar is not a way into the box. It runs as user 65534 with no capabilities, no privilege
+escalation and a read-only root file system, so it reads the `stat`, `status` and `cmdline` of
+the box's processes but not their `environ`, `io` or files (`/proc/<pid>/root`); a root sidecar in
+the same pod reads the env of the box's boot process, which holds the tokens (tested
+2026-11-06). It exports group names only, never a command line. It asks for 10m CPU and 32Mi,
+limit 64Mi, on top of the class of the box.
+
+Apply the ConfigMap before a Job uses the template: a pod whose ConfigMap is missing does not
+start.
+
+```
+kubectl apply -f task/process-groups.yaml
+```
+
+Known limits:
+
+- A process that starts and ends between two scrapes is partly missed.
+- The RSS sum of a group is not the cgroup's peak: shared pages count twice, the file cache not
+  at all.
+- The planner, worker and reviewer subagents share one `claude` process and are not split.
+- PID 1 of the pod is the pause process, not boot.sh. So boot.sh ends at once on the `SIGTERM`
+  of a deleted pod; as PID 1 it ignored the signal and ran on until it ended by itself or the
+  60 s grace ran out (a deleted `status` run, 2026-11-06: gone after 2 s, before after 31 s).
+
 ## License
 
 [Apache 2.0](LICENSE)

@@ -179,6 +179,10 @@ control plane (`install/monitoring/monitoring.yaml`). It scrapes every 30 s:
 - the tenbox server's `/metrics`: `tenbox_node_price_eur_hourly{node, server_type, location}`, the
   hourly list price of each worker that is up, from its `node.added` (enojen/tenbox#198). The
   exact paid euros stay in the server's cost report, which counts started hours.
+- the `processes` sidecar of each running box pod, every 10 s, from the pod IP: CPU, resident
+  memory and process count per process group inside the box, with the pod's `task`, `project`,
+  `command` and `class` (README, "Process metrics"). A Role in namespace `tenbox` lets
+  VictoriaMetrics list the pods there; it reads no other namespace's pods.
 
 ```
 kubectl apply -f install/monitoring/monitoring.yaml
@@ -252,4 +256,5 @@ hcloud server rebuild --image <snapshot id> <server>
 | cluster-autoscaler | v1.36.1 |
 | VictoriaMetrics single node | v1.154.1 |
 | kube-state-metrics | v2.20.0 |
+| process-exporter (box sidecar) | v0.8.7 |
 | kubectl on the computer | v1.36.5 |
