@@ -1,0 +1,95 @@
+# Grafana on the user's tailnet (#59): one Tailscale node `grafana` that serves
+# https://grafana.<tailnet>.ts.net to the Grafana Service, with a Tailscale certificate. No public
+# port: only the devices of the tailnet reach it. Userspace networking, so the pod needs no
+# privilege and no capability. Its state (node key, certificate) lives in Secret
+# `tailscale-grafana`, so a restart keeps the same node; the one-time auth key comes from Secret
+# `tailscale-auth`, made by hand (install/README.md, "Grafana").
+apiVersion: v1
+kind: ServiceAccount
+metadata: { name: tailscale-grafana, namespace: monitoring }
+automountServiceAccountToken: false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata: { name: tailscale-grafana, namespace: monitoring }
+rules:
+  # Its own state only. `create` cannot be limited to one name, so the Secret exists up front.
+  - apiGroups: [""]
+    resources: [secrets]
+    resourceNames: [tailscale-grafana]
+    verbs: [get, update, patch]
+  - apiGroups: [""]
+    resources: [events]
+    verbs: [create, patch, get]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata: { name: tailscale-grafana, namespace: monitoring }
+roleRef: { apiGroup: rbac.authorization.k8s.io, kind: Role, name: tailscale-grafana }
+subjects: [{ kind: ServiceAccount, name: tailscale-grafana, namespace: monitoring }]
+---
+apiVersion: v1
+kind: Secret
+metadata: { name: tailscale-grafana, namespace: monitoring }
+type: Opaque
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: { name: tailscale-grafana, namespace: monitoring }
+data:
+  # ${TS_CERT_DOMAIN} is filled by the image with the node's MagicDNS name.
+  serve.json: |
+    {
+      "TCP": { "443": { "HTTPS": true } },
+      "Web": {
+        "${TS_CERT_DOMAIN}:443": {
+          "Handlers": { "/": { "Proxy": "http://grafana.monitoring.svc:3000" } }
+        }
+      }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: tailscale-grafana, namespace: monitoring }
+spec:
+  replicas: 1
+  strategy: { type: Recreate }
+  selector: { matchLabels: { app: tailscale-grafana } }
+  template:
+    metadata: { labels: { app: tailscale-grafana } }
+    spec:
+      serviceAccountName: tailscale-grafana
+      automountServiceAccountToken: true
+      enableServiceLinks: false
+      nodeSelector: { node-role.kubernetes.io/control-plane: "true" }
+      tolerations: [{ key: node-role.kubernetes.io/control-plane, operator: Exists, effect: NoSchedule }]
+      securityContext: { runAsUser: 1000, runAsGroup: 1000, runAsNonRoot: true }
+      containers:
+        - name: tailscale
+          image: tailscale/tailscale:v1.104.2
+          env:
+            - { name: TS_USERSPACE, value: "true" }
+            - { name: TS_HOSTNAME, value: grafana }
+            - { name: TS_KUBE_SECRET, value: tailscale-grafana }
+            - { name: TS_SERVE_CONFIG, value: /config/serve.json }
+            - { name: TS_EXTRA_ARGS, value: --advertise-tags=tag:k8s }
+            # Read only at the first login; the node key then lives in the state Secret.
+            - name: TS_AUTHKEY
+              valueFrom: { secretKeyRef: { name: tailscale-auth, key: TS_AUTHKEY, optional: true } }
+            - name: POD_NAME
+              valueFrom: { fieldRef: { fieldPath: metadata.name } }
+            - name: POD_UID
+              valueFrom: { fieldRef: { fieldPath: metadata.uid } }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          resources:
+            requests: { cpu: 10m, memory: 32Mi }
+            limits: { memory: 128Mi }
+          volumeMounts:
+            - { name: config, mountPath: /config, readOnly: true }
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - { name: config, configMap: { name: tailscale-grafana } }
+        - { name: tmp, emptyDir: {} }
