@@ -27,6 +27,8 @@ box_env="${BOX_ENV:-"{}"}"
 class="${CLASS:-build}"
 services="${SERVICES:-}"
 ns="${NAMESPACE:-tenbox}"
+# The command name alone, a pod label: "tenbox build TEN-1" is build.
+command="$(printf '%s' "$cmd" | awk '{ print $2 }')"
 here="$(cd "$(dirname "$0")" && pwd)"
 name="$(printf '%s' "$task" | tr '[:upper:]_' '[:lower:]-')"
 run="$(date -u +%m%d-%H%M%S)"
@@ -45,7 +47,7 @@ fill() {
   text="${text//__PROJECT__/$project}"; text="${text//__PROJECT_ID__/$project_id}"
   text="${text//__REPO__/$repo}"; text="${text//__BASE__/$base}"; text="${text//__IMAGE__/$image}"
   text="${text//__ENV__/$box_env}"
-  text="${text//__CLASS__/$class}"
+  text="${text//__CLASS__/$class}"; text="${text//__COMMAND__/$command}"
   text="${text//__CPU__/$cpu}"; text="${text//__MEMORY__/$memory}"
   printf '%s\n' "${text//__CMD__/$cmd}"
 }

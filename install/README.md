@@ -172,7 +172,7 @@ control plane (`install/monitoring/monitoring.yaml`). It scrapes every 30 s:
 
 - kube-state-metrics: what exists. Workers with their server type (`kube_node_labels`, label
   `node.kubernetes.io/instance-type`) and creation time, box pods with their `task`,
-  `project` and `class` labels (two projects can have the same task id), their requests,
+  `project`, `class` and `command` labels (two projects can have the same task id), their requests,
   start and end. The cost report counts paid and busy worker hours from these.
 - cAdvisor of every kubelet, through the API server proxy: what a pod uses. CPU, working set
   and RSS memory, CPU throttling and OOM events; nothing else, as cAdvisor has hundreds more.
