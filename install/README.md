@@ -256,5 +256,5 @@ hcloud server rebuild --image <snapshot id> <server>
 | cluster-autoscaler | v1.36.1 |
 | VictoriaMetrics single node | v1.154.1 |
 | kube-state-metrics | v2.20.0 |
-| process-exporter (box sidecar) | v0.8.7 |
+| procs (box sidecar) | `procs/`, image by commit |
 | kubectl on the computer | v1.36.5 |

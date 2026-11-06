@@ -72,8 +72,9 @@ data:
           - source_labels: [__name__]
             action: keep
             regex: container_(cpu_usage_seconds_total|memory_working_set_bytes|memory_rss|cpu_cfs_periods_total|cpu_cfs_throttled_periods_total|oom_events_total)
-      # The process groups inside each box (task/process-groups.yaml), straight from the pod IP.
-      # Every 10 s: a test run of a few seconds still gets a point.
+      # The process groups inside each box (procs/, the `processes` sidecar), straight from the
+      # pod IP. Its counters run from the pod's start, so a late first scrape loses nothing; the
+      # sidecar outlives the box by 15 s so the last scrape sees the end.
       - job_name: box-processes
         scrape_interval: 10s
         kubernetes_sd_configs: [{ role: pod, namespaces: { names: [tenbox] } }]
@@ -90,14 +91,10 @@ data:
             target_label: pod
           - source_labels: [__meta_kubernetes_pod_node_name]
             target_label: node
-        # CPU, resident memory and the process count of a group; the exporter has more.
         metric_relabel_configs:
           - source_labels: [__name__]
             action: keep
-            regex: namedprocess_namegroup_(cpu_seconds_total|memory_bytes|num_procs)
-          - source_labels: [__name__, memtype]
-            action: drop
-            regex: namedprocess_namegroup_memory_bytes;(virtual|swapped|proportionalResident|proportionalSwapped)
+            regex: tenyard_procs_(cpu_seconds_total|resident_bytes|resident_peak_bytes|processes)
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
