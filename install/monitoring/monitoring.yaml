@@ -26,6 +26,21 @@ metadata: { name: victoria-metrics }
 roleRef: { apiGroup: rbac.authorization.k8s.io, kind: ClusterRole, name: victoria-metrics }
 subjects: [{ kind: ServiceAccount, name: victoria-metrics, namespace: monitoring }]
 ---
+# The box pods, to find their process-exporter sidecars; only in namespace tenbox.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata: { name: victoria-metrics-pods, namespace: tenbox }
+rules:
+  - apiGroups: [""]
+    resources: [pods]
+    verbs: [get, list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata: { name: victoria-metrics-pods, namespace: tenbox }
+roleRef: { apiGroup: rbac.authorization.k8s.io, kind: Role, name: victoria-metrics-pods }
+subjects: [{ kind: ServiceAccount, name: victoria-metrics, namespace: monitoring }]
+---
 apiVersion: v1
 kind: ConfigMap
 metadata: { name: victoria-metrics-scrape, namespace: monitoring }
@@ -57,6 +72,32 @@ data:
           - source_labels: [__name__]
             action: keep
             regex: container_(cpu_usage_seconds_total|memory_working_set_bytes|memory_rss|cpu_cfs_periods_total|cpu_cfs_throttled_periods_total|oom_events_total)
+      # The process groups inside each box (task/process-groups.yaml), straight from the pod IP.
+      # Every 10 s: a test run of a few seconds still gets a point.
+      - job_name: box-processes
+        scrape_interval: 10s
+        kubernetes_sd_configs: [{ role: pod, namespaces: { names: [tenbox] } }]
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_label_app, __meta_kubernetes_pod_container_port_name]
+            regex: tenyard;process-metrics
+            action: keep
+          - source_labels: [__meta_kubernetes_pod_phase]
+            regex: Running
+            action: keep
+          - action: labelmap
+            regex: __meta_kubernetes_pod_label_(task|project|command|class)
+          - source_labels: [__meta_kubernetes_pod_name]
+            target_label: pod
+          - source_labels: [__meta_kubernetes_pod_node_name]
+            target_label: node
+        # CPU, resident memory and the process count of a group; the exporter has more.
+        metric_relabel_configs:
+          - source_labels: [__name__]
+            action: keep
+            regex: namedprocess_namegroup_(cpu_seconds_total|memory_bytes|num_procs)
+          - source_labels: [__name__, memtype]
+            action: drop
+            regex: namedprocess_namegroup_memory_bytes;(virtual|swapped|proportionalResident|proportionalSwapped)
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
