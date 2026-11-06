@@ -175,11 +175,13 @@ control plane (`install/monitoring/monitoring.yaml`). It scrapes every 30 s:
   `project`, `class` and `command` labels (two projects can have the same task id), their requests,
   start and end. The cost report counts paid and busy worker hours from these.
 - cAdvisor of every kubelet, through the API server proxy: what a pod uses. CPU, working set
-  and RSS memory, CPU throttling and OOM events; nothing else, as cAdvisor has hundreds more.
+  and RSS memory, CPU throttling, OOM events and the time its processes waited for CPU, memory
+  or IO (pressure stall information: `container_pressure_*_seconds_total`); nothing else, as
+  cAdvisor has hundreds more.
 - the tenbox server's `/metrics`: `tenbox_node_price_eur_hourly{node, server_type, location}`, the
   hourly list price of each worker that is up, from its `node.added` (enojen/tenbox#198). The
   exact paid euros stay in the server's cost report, which counts started hours.
-- the `processes` sidecar of each running box pod, every 10 s, from the pod IP: CPU, resident
+- the `processes` sidecar of each running box pod, every 10 s, from the pod IP: CPU, anonymous
   memory and process count per process group inside the box, with the pod's `task`, `project`,
   `command` and `class` (README, "Process metrics"). A Role in namespace `tenbox` lets
   VictoriaMetrics list the pods there; it reads no other namespace's pods.

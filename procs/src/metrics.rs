@@ -25,17 +25,17 @@ pub fn render(account: &Account) -> String {
         |m: &BTreeMap<String, u64>| m.iter().map(|(g, v)| (g.clone(), *v as f64)).collect();
     family(
         &mut out,
-        "tenyard_procs_resident_bytes",
+        "tenyard_procs_anon_bytes",
         "gauge",
-        "Resident memory of the group's live processes.",
-        &as_f64(&account.resident),
+        "Anonymous memory (heap, stacks) of the group's live processes; no page of a file.",
+        &as_f64(&account.anon),
     );
     family(
         &mut out,
-        "tenyard_procs_resident_peak_bytes",
+        "tenyard_procs_anon_peak_bytes",
         "gauge",
-        "Highest resident memory of the group at any read.",
-        &as_f64(&account.resident_peak),
+        "Highest anonymous memory of the group at any read.",
+        &as_f64(&account.anon_peak),
     );
     family(
         &mut out,
@@ -63,7 +63,7 @@ mod tests {
     fn each_group_is_one_line_per_family() {
         let mut account = Account::default();
         account.cpu.insert("test".to_string(), 1_500_000);
-        account.resident.insert("test".to_string(), 4096);
+        account.anon.insert("test".to_string(), 4096);
         let text = render(&account);
         assert!(
             text.contains("# TYPE tenyard_procs_cpu_seconds_total counter\n"),
@@ -74,7 +74,7 @@ mod tests {
             "{text}"
         );
         assert!(
-            text.contains("tenyard_procs_resident_bytes{group=\"test\"} 4096\n"),
+            text.contains("tenyard_procs_anon_bytes{group=\"test\"} 4096\n"),
             "{text}"
         );
     }

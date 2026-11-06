@@ -71,7 +71,7 @@ data:
         metric_relabel_configs:
           - source_labels: [__name__]
             action: keep
-            regex: container_(cpu_usage_seconds_total|memory_working_set_bytes|memory_rss|cpu_cfs_periods_total|cpu_cfs_throttled_periods_total|oom_events_total)
+            regex: container_(cpu_usage_seconds_total|memory_working_set_bytes|memory_rss|cpu_cfs_periods_total|cpu_cfs_throttled_periods_total|oom_events_total|pressure_(cpu|memory|io)_(waiting|stalled)_seconds_total)
       # The process groups inside each box (procs/, the `processes` sidecar), straight from the
       # pod IP. Its counters run from the pod's start, so a late first scrape loses nothing; the
       # sidecar outlives the box by 15 s so the last scrape sees the end.
@@ -94,7 +94,7 @@ data:
         metric_relabel_configs:
           - source_labels: [__name__]
             action: keep
-            regex: tenyard_procs_(cpu_seconds_total|resident_bytes|resident_peak_bytes|processes)
+            regex: tenyard_procs_(cpu_seconds_total|anon_bytes|anon_peak_bytes|processes)
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim

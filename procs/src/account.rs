@@ -55,10 +55,10 @@ pub struct Account {
     credit: HashMap<Key, Credit>,
     /// CPU per group, in microseconds, since the first read.
     pub cpu: BTreeMap<String, u64>,
-    /// Resident memory per group at the last read, in bytes.
-    pub resident: BTreeMap<String, u64>,
-    /// The highest `resident` of each group at any read.
-    pub resident_peak: BTreeMap<String, u64>,
+    /// Anonymous memory per group at the last read, in bytes.
+    pub anon: BTreeMap<String, u64>,
+    /// The highest `anon` of each group at any read.
+    pub anon_peak: BTreeMap<String, u64>,
     /// Live processes per group at the last read.
     pub processes: BTreeMap<String, u64>,
 }
@@ -70,15 +70,15 @@ impl Account {
         let now_by_pid: HashMap<u32, Key> = now.iter().map(|p| (p.key.pid, p.key)).collect();
         let keys: std::collections::HashSet<Key> = now.iter().map(|p| p.key).collect();
         self.settle_vanished(&keys, &now_by_pid);
-        for gauge in [&mut self.resident, &mut self.processes] {
+        for gauge in [&mut self.anon, &mut self.processes] {
             gauge.values_mut().for_each(|v| *v = 0);
         }
         for p in &now {
             let group = self.group_of(p, &now_by_pid, rules);
             self.count(p, &group);
         }
-        for (name, bytes) in &self.resident {
-            let peak = self.resident_peak.entry(name.clone()).or_default();
+        for (name, bytes) in &self.anon {
+            let peak = self.anon_peak.entry(name.clone()).or_default();
             *peak = (*peak).max(*bytes);
         }
         self.credit.retain(|k, _| keys.contains(k));
@@ -172,7 +172,7 @@ impl Account {
         let own = p.own.saturating_sub(before.map_or(0, |b| b.own));
         let child = p.child.saturating_sub(before.map_or(0, |b| b.child));
         self.add(&group.name, own);
-        *self.resident.entry(group.name.clone()).or_default() += p.rss;
+        *self.anon.entry(group.name.clone()).or_default() += p.anon;
         *self.processes.entry(group.name.clone()).or_default() += 1;
 
         let mut credit = self.credit.remove(&p.key).unwrap_or_default();
@@ -242,7 +242,7 @@ mod tests {
             cmd: cmd.to_string(),
             own,
             child,
-            rss: 0,
+            anon: 0,
         }
     }
 
@@ -369,15 +369,15 @@ mod tests {
     #[test]
     fn memory_is_summed_per_group_and_its_peak_kept() {
         let mut big = proc(20, 10, "bun test", 0, 0);
-        big.rss = 300;
+        big.anon = 300;
         let mut small = proc(20, 10, "bun test", 0, 0);
-        small.rss = 100;
+        small.anon = 100;
         let a = run(vec![
             vec![proc(10, 1, "claude", 0, 0), big],
             vec![proc(10, 1, "claude", 0, 0), small],
         ]);
-        assert_eq!(a.resident.get("test"), Some(&100));
-        assert_eq!(a.resident_peak.get("test"), Some(&300));
+        assert_eq!(a.anon.get("test"), Some(&100));
+        assert_eq!(a.anon_peak.get("test"), Some(&300));
         assert_eq!(a.processes.get("claude"), Some(&1));
     }
 }
