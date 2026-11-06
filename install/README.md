@@ -176,6 +176,9 @@ control plane (`install/monitoring/monitoring.yaml`). It scrapes every 30 s:
   start and end. The cost report counts paid and busy worker hours from these.
 - cAdvisor of every kubelet, through the API server proxy: what a pod uses. CPU, working set
   and RSS memory, CPU throttling and OOM events; nothing else, as cAdvisor has hundreds more.
+- the tenbox server's `/metrics`: `tenbox_node_price_eur_hourly{node, server_type, location}`, the
+  hourly list price of each worker that is up, from its `node.added` (enojen/tenbox#198). The
+  exact paid euros stay in the server's cost report, which counts started hours.
 
 ```
 kubectl apply -f install/monitoring/monitoring.yaml

@@ -36,6 +36,9 @@ data:
     scrape_configs:
       - job_name: kube-state-metrics
         static_configs: [{ targets: [kube-state-metrics.monitoring.svc:8080] }]
+      # The hourly list price of each worker that is up (enojen/tenbox#198); open inside the cluster.
+      - job_name: tenbox-server
+        static_configs: [{ targets: [tenbox-server.tenbox-server.svc:4300] }]
       # Through the API server proxy: the kubelets need no open port.
       - job_name: cadvisor
         scheme: https
