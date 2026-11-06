@@ -196,6 +196,36 @@ kubectl -n monitoring port-forward svc/victoria-metrics 8428   # then http://loc
 The data lives on its own 10 GB Hetzner volume, kept with `Retain`, so it outlives the pod and
 the claim. Together the two pods ask for 150m and 320Mi of the server.
 
+### Grafana
+
+Grafana shows one dashboard, Tenyard, over VictoriaMetrics (`install/monitoring/grafana/`):
+
+- **In numbers**: the whole cluster in the time range as plain numbers: tasks, projects, machine
+  runs, agent hours (from the process groups), machine hours, the most runs at once, workers
+  opened, machine cost and cost per task, OOM kills, CPU hours, and the share of worker time with
+  no run on it.
+- **Workers**: the machines that were up with their server type, their hourly list price, and
+  per machine its CPU and memory used and the memory the running boxes reserved, in % of it.
+- **Box runs**: a table with one row per run (task, command, project, class, machine, start, run
+  time, memory peak and its share of the class limit, CPU seconds, OOM kills), then the memory,
+  CPU and CPU waiting of each run over time.
+- **Inside the runs**: CPU and anon memory per process group (README, "Process metrics"), and the
+  CPU seconds and memory peak per group over the time range.
+
+The variables `machine`, `project`, `task` and `command` filter the rows below the numbers; a
+worker links to its runs, and a task in the table to the process groups of that run, in its own
+time range. The dashboard is `tenyard.json` in git, applied as a ConfigMap:
+change the JSON (or export it from the UI) and apply again; Grafana reads it within a minute. The
+UI cannot save over it. Grafana keeps no other state: its database is an emptyDir, so a restart
+loses only logins. It asks for 50m and 256Mi on the server (about 260 MiB used with the
+dashboard open); it downloads no plugins.
+
+```
+P=$(openssl rand -base64 18); echo "$P"; kubectl -n monitoring create secret generic grafana-admin --from-literal=password="$P"
+kubectl apply -k install/monitoring/grafana
+kubectl -n monitoring port-forward svc/grafana 3000   # then http://localhost:3000, user admin
+```
+
 ## Server
 
 The tenbox server (`server/` of enojen/tenbox, image `ghcr.io/enojen/tenbox-server`, private)

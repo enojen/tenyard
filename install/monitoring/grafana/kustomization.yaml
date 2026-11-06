@@ -1,0 +1,10 @@
+# kubectl apply -k install/monitoring/grafana: grafana.yaml and the dashboard JSON as a ConfigMap.
+# Grafana reads a changed dashboard within a minute, with no restart.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources: [grafana.yaml]
+configMapGenerator:
+  - name: grafana-dashboards
+    namespace: monitoring
+    files: [tenyard.json]
+    options: { disableNameSuffixHash: true }

@@ -1,0 +1,86 @@
+# Grafana over VictoriaMetrics: one dashboard (tenyard.json, next to this file) with three rows,
+# the workers, the box runs and the process groups inside them. Data source and dashboard come
+# from git at every start, so Grafana keeps no state worth a volume: its database is an emptyDir.
+# No public port: `kubectl -n monitoring port-forward svc/grafana 3000`, then log in as admin with
+# the password of Secret `grafana-admin`.
+apiVersion: v1
+kind: ConfigMap
+metadata: { name: grafana-provisioning, namespace: monitoring }
+data:
+  datasources.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: VictoriaMetrics
+        uid: victoria-metrics
+        type: prometheus
+        access: proxy
+        url: http://victoria-metrics.monitoring.svc:8428
+        isDefault: true
+        editable: false
+  dashboards.yaml: |
+    apiVersion: 1
+    providers:
+      - name: tenyard
+        type: file
+        allowUiUpdates: false
+        updateIntervalSeconds: 30
+        options: { path: /var/lib/grafana/dashboards }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: grafana, namespace: monitoring }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: grafana } }
+  template:
+    metadata: { labels: { app: grafana } }
+    spec:
+      nodeSelector: { node-role.kubernetes.io/control-plane: "true" }
+      tolerations: [{ key: node-role.kubernetes.io/control-plane, operator: Exists, effect: NoSchedule }]
+      enableServiceLinks: false
+      automountServiceAccountToken: false
+      securityContext: { runAsUser: 472, runAsGroup: 472, fsGroup: 472, runAsNonRoot: true }
+      containers:
+        - name: grafana
+          image: grafana/grafana:13.2.4
+          env:
+            - { name: GF_SECURITY_ADMIN_USER, value: admin }
+            - name: GF_SECURITY_ADMIN_PASSWORD
+              valueFrom: { secretKeyRef: { name: grafana-admin, key: password } }
+            - { name: GF_USERS_ALLOW_SIGN_UP, value: "false" }
+            - { name: GF_AUTH_ANONYMOUS_ENABLED, value: "false" }
+            - { name: GF_ANALYTICS_REPORTING_ENABLED, value: "false" }
+            - { name: GF_ANALYTICS_CHECK_FOR_UPDATES, value: "false" }
+            - { name: GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES, value: "false" }
+            - { name: GF_NEWS_NEWS_FEED_ENABLED, value: "false" }
+            # No plugin downloads: Grafana 13 updates its bundled plugins at start, which fails on the
+            # read-only file system and leaves the Prometheus data source unregistered.
+            - { name: GF_PLUGINS_PREINSTALL_DISABLED, value: "true" }
+            - { name: GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH, value: /var/lib/grafana/dashboards/tenyard.json }
+          ports: [{ containerPort: 3000, name: http }]
+          readinessProbe: { httpGet: { path: /api/health, port: http } }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          resources:
+            requests: { cpu: 50m, memory: 256Mi }
+            limits: { memory: 512Mi }
+          volumeMounts:
+            - { name: data, mountPath: /var/lib/grafana }
+            - { name: tmp, mountPath: /tmp }
+            - { name: provisioning, mountPath: /etc/grafana/provisioning/datasources/datasources.yaml, subPath: datasources.yaml, readOnly: true }
+            - { name: provisioning, mountPath: /etc/grafana/provisioning/dashboards/dashboards.yaml, subPath: dashboards.yaml, readOnly: true }
+            - { name: dashboards, mountPath: /var/lib/grafana/dashboards, readOnly: true }
+      volumes:
+        - { name: data, emptyDir: {} }
+        - { name: tmp, emptyDir: {} }
+        - { name: provisioning, configMap: { name: grafana-provisioning } }
+        - { name: dashboards, configMap: { name: grafana-dashboards } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: grafana, namespace: monitoring }
+spec:
+  selector: { app: grafana }
+  ports: [{ port: 3000, targetPort: http, name: http }]
