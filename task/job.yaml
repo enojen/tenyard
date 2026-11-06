@@ -21,15 +21,17 @@ spec:
       automountServiceAccountToken: false
       terminationGracePeriodSeconds: 60
       imagePullSecrets: [{ name: ghcr }]
-      # The process-exporter sees the box's processes (README, "Process metrics").
+      # procs sees the box's processes (README, "Process metrics").
       shareProcessNamespace: true
       initContainers:
         # A native sidecar: it ends when the box ends. Another user with no capabilities, so it
-        # reads the stat, status and cmdline of the box's processes but not their env or files.
+        # reads the stat and cmdline of the box's processes but not their env or files.
         - name: processes
-          image: ncabatoff/process-exporter:v0.8.7@sha256:bc2363ff7e05ada1b2a694f06c43dc824dc26cd6e487b5d36b66b1a40df4e842
+          image: ghcr.io/enojen/tenyard-procs:4f43a8b065c473d322afbaa81a2237a17d7ab1fa@sha256:f2626b2f1ca239741e123577f119aaafd019069efc38da09175fa35be2d9c9b2
           restartPolicy: Always
-          args: [-config.path=/config/groups.yaml, -threads=false, -gather-smaps=false]
+          args: [--interval-ms, "100"]
+          # The box has ended: stay 15 s more, so a 10 s scrape still reads the last counters.
+          lifecycle: { preStop: { sleep: { seconds: 15 } } }
           ports: [{ name: process-metrics, containerPort: 9256 }]
           securityContext:
             runAsUser: 65534
@@ -39,10 +41,8 @@ spec:
             readOnlyRootFilesystem: true
             capabilities: { drop: [ALL] }
           resources:
-            requests: { cpu: 10m, memory: 32Mi }
-            limits: { memory: 64Mi }
-          volumeMounts:
-            - { name: process-groups, mountPath: /config, readOnly: true }
+            requests: { cpu: 10m, memory: 8Mi }
+            limits: { memory: 32Mi }
       containers:
         - name: box
           image: __IMAGE__
@@ -78,5 +78,3 @@ spec:
       volumes:
         - name: home
           persistentVolumeClaim: { claimName: task-__NAME__ }
-        - name: process-groups
-          configMap: { name: process-groups }

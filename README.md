@@ -124,48 +124,73 @@ What the box does with them is the image's business (tenbox `machines/k8s/boot.s
 
 cAdvisor sees a box as one cgroup: claude, the tests, `tsc` and the installs are one number.
 To see which of them uses the CPU and the RAM, every box pod has a second native sidecar,
-`processes`: [process-exporter](https://github.com/ncabatoff/process-exporter) v0.8.7, pinned
-by digest, on port 9256. The pod shares one process namespace (`shareProcessNamespace`), so
-the sidecar sees the box's processes. VictoriaMetrics scrapes it every 10 s
-(`install/README.md`, "Metrics").
+`processes`: `procs/`, a small Rust program (one static binary on scratch, image
+`ghcr.io/enojen/tenyard-procs`, pushed by `.github/workflows/procs.yml`), on port 9256. The pod
+shares one process namespace (`shareProcessNamespace`), so the sidecar sees the box's processes.
+VictoriaMetrics scrapes it every 10 s (`install/README.md`, "Metrics").
 
-`task/process-groups.yaml` (a ConfigMap in namespace `tenbox`) puts each process into the first
-group whose rule matches its command line; a process that matches none counts in the group of
-its nearest matched parent:
+It reads `/proc` every 100 ms and counts each process's own CPU (utime + stime) and the growth of
+its cutime + cstime: the kernel adds a child's whole CPU to its parent when the parent reaps it,
+so a process that starts and ends between two reads is not lost. A vanished process hands what
+was already counted of it to its nearest live ancestor, so only its unseen tail is added, once.
+Its counters run from the pod's start, and the sidecar stays 15 s after the box ends
+(`preStop`), so the last scrape reads the end. process-exporter, which counts only the processes
+alive at a scrape, saw 19 % of a box's CPU on a check run of tenbox (2026-11-06).
 
-| group | what |
-|---|---|
-| `claude` | claude and the tool commands it runs that match no other group |
-| `tenbox` | the tenbox CLI |
-| `test` | `bun test`, vitest, jest, mocha, playwright, `npm`/`pnpm`/`yarn`/`bun` `test` |
-| `tsc` | `tsc`, `tsgo`, `vue-tsc` |
-| `lint` | biome, eslint, oxlint, prettier, knip |
-| `install` | `bun`, `npm`, `pnpm`, `yarn` `install`, `ci`, `i`, `add` |
-| `git` | git and its helpers |
-| `service` | the sidecars of `task/services/` |
-| `other` | boot.sh, sudo, its poll of the sessions, the pause process, the exporter itself |
+`procs/groups.conf`, inside the image, puts each process into the first group whose rule matches
+its command line. Below a sticky group every descendant stays in it (a whole test run is `test`,
+also the git it calls); below an open group a descendant that matches a rule takes that group,
+and one that matches none stays in its parent's group:
 
-The series are `namedprocess_namegroup_cpu_seconds_total`,
-`namedprocess_namegroup_memory_bytes{memtype="resident"}` and
-`namedprocess_namegroup_num_procs`, with the pod labels `task`, `project`, `command` and `class`.
+| group | kind | what |
+|---|---|---|
+| `claude` | open | claude and the tool commands it runs that match no other group |
+| `tenbox` | open | the tenbox CLI |
+| `test` | sticky | `bun test`, vitest, jest, mocha, playwright, `npm`/`pnpm`/`yarn`/`bun` `test` |
+| `tsc` | sticky | `tsc`, `tsgo`, `vue-tsc` |
+| `lint` | sticky | biome, eslint, oxlint, prettier, knip |
+| `install` | sticky | `bun`, `npm`, `pnpm`, `yarn` `install`, `ci`, `i`, `add` |
+| `git` | sticky | git and its helpers |
+| `service` | sticky | the sidecars of `task/services/` |
+| `other` | open | boot.sh, sudo, its poll of the sessions, the pause process, procs itself |
+
+The series are `tenyard_procs_cpu_seconds_total`, `tenyard_procs_resident_bytes`,
+`tenyard_procs_resident_peak_bytes` (the highest group sum at any read) and
+`tenyard_procs_processes`, per `group`, with the pod labels `task`, `project`, `command` and
+`class`.
+
+How exact it is, measured on a computer: a systemd scope with one child cgroup per group gives
+each group's exact CPU, while procs runs on the same processes with its rules (`bun test
+cli/commands` of tenbox, `tsgo` three times, a git loop and a claude-like loop with tool
+commands, 85-123 s of CPU). Four runs, 2026-11-06:
+
+| | 250 ms | 100 ms |
+|---|---|---|
+| all groups | 99.8 % | 99.8 % |
+| test, tsc | 99.7-100 % | 99.7-100 % |
+| git (3-5 s) | 86-117 % | 93-98 % |
+| claude (2-3 s) | 67-126 % | 103-114 % |
+
+The small groups trade a few tenths of a second: a git call of claude that lives less than one
+read counts as claude, the group of its parent.
+
+On the cluster, a box that ran tenbox's checks three times and its e2e tests (2026-11-06): the
+groups summed to 108.48 s, cAdvisor's CPU of the pod to 108.54 s (99.9 %): test 87.3, tsc 12.5,
+lint 4.3, other 2.2, install 1.5, git 0.4, tenbox 0.2. procs itself used 0.9 s of CPU in the 2.6
+minutes and 1 MiB.
 
 The sidecar is not a way into the box. It runs as user 65534 with no capabilities, no privilege
-escalation and a read-only root file system, so it reads the `stat`, `status` and `cmdline` of
-the box's processes but not their `environ`, `io` or files (`/proc/<pid>/root`); a root sidecar in
-the same pod reads the env of the box's boot process, which holds the tokens (tested
-2026-11-06). It exports group names only, never a command line. It asks for 10m CPU and 32Mi,
-limit 64Mi, on top of the class of the box.
-
-Apply the ConfigMap before a Job uses the template: a pod whose ConfigMap is missing does not
-start.
-
-```
-kubectl apply -f task/process-groups.yaml
-```
+escalation and a read-only root file system, so it reads the `stat` and `cmdline` of the box's
+processes but not their `environ`, `io` or files (`/proc/<pid>/root`); a root sidecar in the
+same pod reads the env of the box's boot process, which holds the tokens (tested 2026-11-06). It
+exports group names only, never a command line. It asks for 10m CPU and 8Mi, limit 32Mi, on top
+of the class of the box; it holds about 2 MB. A broken groups file never stops the box: every
+process is then `other`.
 
 Known limits:
 
-- A process that starts and ends between two scrapes is partly missed.
+- A process reaped by a parent that is not in the pod, or that ignores its children, loses the
+  CPU it had after its last read.
 - The RSS sum of a group is not the cgroup's peak: shared pages count twice, the file cache not
   at all.
 - The planner, worker and reviewer subagents share one `claude` process and are not split.
