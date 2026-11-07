@@ -1,7 +1,3 @@
-# hcloud-cloud-controller-manager v1.39.2, ccm-networks.yaml of the release, with three changes:
-# no route and no node CIDR controller (flannel of k3s owns the pod network, 10.42.0.0/16),
-# and no load balancers. It sets the providerID hcloud://<server id> the autoscaler needs,
-# and the private IP of tenyard-net as InternalIP.
 ---
 # Source: hcloud-cloud-controller-manager/templates/serviceaccount.yaml
 apiVersion: v1
@@ -97,9 +93,6 @@ kind: Deployment
 metadata:
   name: hcloud-cloud-controller-manager
   namespace: kube-system
-  annotations:
-    ignore-check.kube-linter.io/host-network: "the CCM sets up the nodes before the pod network is there"
-    ignore-check.kube-linter.io/unset-memory-requirements: "as upstream ships it; the change is tried on the cluster first"
 spec:
   replicas: 1
   revisionHistoryLimit: 2
@@ -152,6 +145,8 @@ spec:
             - "--feature-gates=CloudControllerManagerWatchBasedRoutesReconciliation=true"
             - "--route-reconciliation-period=30s"
             - "--webhook-secure-port=0"
+            - "--allocate-node-cidrs=true"
+            - "--cluster-cidr=10.244.0.0/16"
             - "--leader-elect=false"
           env:
             - name: HCLOUD_TOKEN
@@ -171,10 +166,6 @@ spec:
                   key: robot-user
                   name: hcloud
                   optional: true
-            - name: HCLOUD_NETWORK_ROUTES_ENABLED
-              value: "false"
-            - name: HCLOUD_LOAD_BALANCERS_ENABLED
-              value: "false"
             - name: HCLOUD_NETWORK
               valueFrom:
                 secretKeyRef:

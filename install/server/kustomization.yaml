@@ -1,0 +1,4 @@
+# The tenbox server, its database volume and its daily backup.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources: [server.yaml]

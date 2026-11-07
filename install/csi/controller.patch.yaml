@@ -1,0 +1,17 @@
+# The CSI controller attaches volumes; it may run on the tainted control plane, so a box
+# volume attaches while the pool is at zero.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hcloud-csi-controller
+  namespace: kube-system
+  annotations:
+    ignore-check.kube-linter.io/run-as-non-root: "as upstream ships it; the change is tried on the cluster first"
+    ignore-check.kube-linter.io/no-read-only-root-fs: "as upstream ships it; the change is tried on the cluster first"
+    ignore-check.kube-linter.io/unset-cpu-requirements: "as upstream ships it; the change is tried on the cluster first"
+    ignore-check.kube-linter.io/unset-memory-requirements: "as upstream ships it; the change is tried on the cluster first"
+spec:
+  template:
+    spec:
+      tolerations:
+        - { key: node-role.kubernetes.io/control-plane, effect: NoSchedule }

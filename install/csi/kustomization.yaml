@@ -1,0 +1,10 @@
+# The Hetzner CSI driver v2.24.0: a PersistentVolumeClaim becomes a Hetzner volume, and
+# hcloud-volumes is the default StorageClass. hcloud-csi.yml is the release's
+# deploy/kubernetes/hcloud-csi.yml, unchanged; every change is a patch here. It reads the token
+# from the Secret hcloud of kube-system.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources: [hcloud-csi.yml]
+patches:
+  - path: controller.patch.yaml
+  - path: node.patch.yaml

@@ -1,0 +1,10 @@
+# hcloud-cloud-controller-manager v1.39.2. It sets the providerID hcloud://<server id> the
+# autoscaler needs, and the private IP of tenyard-net as InternalIP. ccm-networks.yaml is the
+# release's file, unchanged; ccm.patch.yaml holds our changes. It reads the token and the
+# network from the Secret hcloud of kube-system.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources: [ccm-networks.yaml]
+patches:
+  - path: ccm.patch.yaml
+    target: { kind: Deployment, name: hcloud-cloud-controller-manager }

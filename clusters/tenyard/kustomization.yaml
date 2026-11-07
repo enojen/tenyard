@@ -1,0 +1,13 @@
+# Every object of the Tenyard cluster that lives in git:
+#   kubectl diff -k clusters/tenyard    what an apply would change
+#   kubectl apply -k clusters/tenyard   apply it
+# Secrets stay outside (install/README.md names each one), and so do the objects k3s makes.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../install/cluster
+  - ../../install/ccm
+  - ../../install/csi
+  - ../../install/autoscaler
+  - ../../install/monitoring
+  - ../../install/server

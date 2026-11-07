@@ -1,0 +1,24 @@
+# Three changes to the release's ccm-networks.yaml: no route and no node CIDR controller
+# (flannel of k3s owns the pod network, 10.42.0.0/16), and no load balancers. A JSON patch, so
+# the args are replaced whole and the two env entries go before HCLOUD_NETWORK, where they
+# always were (a new order would restart the pod).
+- op: replace
+  path: /spec/template/spec/containers/0/args
+  value:
+    - "--allow-untagged-cloud"
+    - "--cloud-provider=hcloud"
+    - "--feature-gates=CloudControllerManagerWatchBasedRoutesReconciliation=true"
+    - "--route-reconciliation-period=30s"
+    - "--webhook-secure-port=0"
+    - "--leader-elect=false"
+- op: add
+  path: /spec/template/spec/containers/0/env/3
+  value: { name: HCLOUD_NETWORK_ROUTES_ENABLED, value: "false" }
+- op: add
+  path: /spec/template/spec/containers/0/env/4
+  value: { name: HCLOUD_LOAD_BALANCERS_ENABLED, value: "false" }
+- op: add
+  path: /metadata/annotations
+  value:
+    ignore-check.kube-linter.io/host-network: "the CCM sets up the nodes before the pod network is there"
+    ignore-check.kube-linter.io/unset-memory-requirements: "as upstream ships it; the change is tried on the cluster first"

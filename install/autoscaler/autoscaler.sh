@@ -1,16 +1,17 @@
 #!/usr/bin/env bash
-# Installs the cluster autoscaler of the box pool (autoscaler.yaml). Writes the Secret
-# `tenyard-autoscaler` with the pool config (cluster-config.json: the image and the worker
-# cloud-init) and a bootstrap token that joins workers only, then applies the Deployment.
-# A second run keeps the token and replaces the config. Needs KUBECONFIG, kubectl, jq and ssh
-# to the server as root (the token is made with `k3s token create`).
+# Writes the Secret `tenyard-autoscaler` of the cluster autoscaler: the pool config
+# (cluster-config.json: the image and the worker cloud-init) and a bootstrap token that joins
+# workers only. A second run keeps the token and replaces the config. Then it applies the
+# Deployment (kustomization.yaml here) and restarts it, as the autoscaler reads the Secret at
+# start. Needs KUBECONFIG, kubectl, jq and ssh to the server as root (the token is made with
+# `k3s token create`).
 #
 # Usage: autoscaler.sh <server ssh host> <server ip on tenyard-net>
-# Env: UNNEEDED_TIME (50m): how long a worker stays unneeded before it goes.
+# How long a worker stays unneeded before it goes is `--scale-down-unneeded-time` in
+# autoscaler.yaml.
 set -euo pipefail
 host="$1"
 server_ip="$2"
-unneeded="${UNNEEDED_TIME:-50m}"
 dir="$(cd "$(dirname "$0")" && pwd)"
 ns=kube-system
 
@@ -31,7 +32,6 @@ printf %s "$token" > "$tmp/token"
 kubectl -n "$ns" create secret generic tenyard-autoscaler \
   --from-file=cluster-config.json="$tmp/cluster-config.json" --from-file=token="$tmp/token" \
   --dry-run=client -o yaml | kubectl -n "$ns" apply -f -
-sed "s|--scale-down-unneeded-time=50m|--scale-down-unneeded-time=$unneeded|" "$dir/autoscaler.yaml" \
-  | kubectl apply -f -
+kubectl apply -k "$dir"
 kubectl -n "$ns" rollout restart deployment/cluster-autoscaler
 kubectl -n "$ns" rollout status deployment/cluster-autoscaler --timeout=120s
