@@ -19,6 +19,7 @@ spec:
     spec:
       restartPolicy: Never
       automountServiceAccountToken: false
+      securityContext: { fsGroup: 1001, fsGroupChangePolicy: OnRootMismatch }
       terminationGracePeriodSeconds: 60
       imagePullSecrets: [{ name: ghcr }]
       # procs sees the box's processes (README, "Process metrics").
@@ -47,6 +48,13 @@ spec:
         - name: box
           image: __IMAGE__
           imagePullPolicy: Always
+          securityContext:
+            runAsUser: 1001
+            runAsGroup: 1001
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            capabilities: { drop: [ALL] }
+            seccompProfile: { type: RuntimeDefault }
           env:
             - { name: TENBOX_TASK, value: "__TASK__" }
             - { name: TENBOX_PROJECT, value: "__PROJECT__" }
