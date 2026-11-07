@@ -22,7 +22,7 @@ spec:
       securityContext: { fsGroup: 1001, fsGroupChangePolicy: OnRootMismatch }
       terminationGracePeriodSeconds: 60
       imagePullSecrets: [{ name: ghcr }]
-      # procs sees the box's processes (README, "Process metrics").
+      # procs sees the box's processes (docs/reference.md, "Process metrics").
       shareProcessNamespace: true
       initContainers:
         # A native sidecar: it ends when the box ends. Another user with no capabilities, so it

@@ -1,6 +1,6 @@
 # The root of the Tenyard cluster, the path Flux syncs (flux-system/gotk-sync.yaml): Flux
 # itself and its four layers (layers.yaml). Each layer is its own kustomization; Flux applies
-# them in order. To start Flux on a new cluster, install/README.md "Flux".
+# them in order. To start Flux on a new cluster, install/README.md, "The cluster in git: Flux".
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources: [flux-system, layers.yaml]
