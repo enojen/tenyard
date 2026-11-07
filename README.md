@@ -16,8 +16,9 @@ box runs belongs to Tenyard. Tenyard never knows what an image does, only how to
 
 - `infra/`: the Hetzner side, as OpenTofu: the network, the control-plane server and the
   firewalls (`install/README.md`, "Hetzner resources").
-- `clusters/tenyard/`: every object of the cluster that lives in git, as one kustomization;
-  `kubectl diff -k clusters/tenyard` shows what differs from the cluster.
+- `clusters/tenyard/`: what Flux applies from `main`: Flux itself and the cluster in four
+  layers, `cluster`, `secrets`, `infrastructure` and `apps` (`install/README.md`, "Flux"). A
+  merge reaches the cluster within minutes; a change by hand is put back.
 - `install/`: how the cluster is set up, on one Hetzner server, with a rollback, and the
   workers that the cluster autoscaler adds for the boxes and removes when they are idle; one
   kustomization per component.
@@ -29,7 +30,7 @@ box runs belongs to Tenyard. Tenyard never knows what an image does, only how to
   cluster's version and lints it; an object that breaks a kube-linter check on purpose says why
   in an `ignore-check.kube-linter.io/<check>` annotation. `check-scripts.sh` runs shellcheck.
   `check-secrets.sh` fails on a Secret that is not encrypted, also before each commit
-  (`.githooks/pre-commit`); `apply-secrets.sh` decrypts and applies the ones in `secrets/`.
+  (`.githooks/pre-commit`); `apply-secrets.sh --diff` shows what differs from the cluster.
   `check-infra.sh` checks the format of `infra/` and validates it, with no token and no state.
   `check-backup.sh` downloads the backups of a day and checks that they open.
 - `secrets/`: the Secrets of the cluster, encrypted with SOPS to the age key of Tenyard

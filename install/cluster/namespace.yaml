@@ -1,4 +1,23 @@
-# The namespace the agent Jobs and their volumes live in.
+# Every namespace of Tenyard, made first (Flux layer `cluster`), so the Secrets of secrets/ have
+# their namespace before the components that read them. Flux never deletes one of them (prune
+# disabled): a namespace that leaves git by mistake would take its volume claims with it.
+# The agent Jobs and their volumes.
 apiVersion: v1
 kind: Namespace
-metadata: { name: tenbox }
+metadata:
+  name: tenbox
+  annotations: { kustomize.toolkit.fluxcd.io/prune: disabled }
+---
+# The tenbox server, its database volume and its backups (install/server, install/backup).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tenbox-server
+  annotations: { kustomize.toolkit.fluxcd.io/prune: disabled }
+---
+# VictoriaMetrics, kube-state-metrics and Grafana (install/monitoring).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+  annotations: { kustomize.toolkit.fluxcd.io/prune: disabled }

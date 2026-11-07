@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Fails on a Secret that is not encrypted: a file in secrets/ that is not
 # <namespace>/<name>.sops.yaml or that sops did not encrypt, and a Secret with data in the build
-# of clusters/tenyard. Needs no key. Run tools/install.sh first. With --staged (the pre-commit
-# hook) it reads the files of secrets/ as the next commit holds them, not as they are on disk.
+# of clusters/tenyard or of one of its layers. Needs no key. Run tools/install.sh first. With
+# --staged (the pre-commit hook) it reads the files of secrets/ as the next commit holds them,
+# not as they are on disk.
 set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
 bin="$root/.tools/bin"
@@ -27,7 +28,10 @@ while IFS= read -r file; do
 done < <(git ls-files secrets)
 
 # An empty Secret (a state Secret a pod writes into) may live in the build; one with values not.
-plain="$("$bin/kustomize" build clusters/tenyard | awk '
+plain="$(for dir in clusters/tenyard install/cluster clusters/tenyard/infrastructure clusters/tenyard/apps; do
+  "$bin/kustomize" build "$dir" || exit 1
+  echo ---
+done | awk '
   /^---/ { if (secret && values) print name; secret = 0; values = 0; name = ""; next }
   /^kind: Secret$/ { secret = 1 }
   /^  name: / && name == "" { name = $2 }

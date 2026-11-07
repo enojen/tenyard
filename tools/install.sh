@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Downloads the tools of the checks, the Secrets and infra/ into .tools/bin, each one pinned by version and sha256. A second run
+# Downloads the tools of the checks, the Secrets, infra/ and Flux into .tools/bin, each one pinned by version and sha256. A second run
 # keeps a tool that is already there at its version. Linux and macOS, amd64 and arm64. It also
 # points git at the hooks in .githooks/.
 #
@@ -16,6 +16,7 @@ tofu_version=1.13.1
 kubeconform_version=v0.8.0
 kube_linter_version=v0.8.3
 shellcheck_version=v0.11.0
+flux_version=2.9.6
 
 case "$(uname -s)-$(uname -m)" in
   Linux-x86_64)
@@ -24,28 +25,32 @@ case "$(uname -s)-$(uname -m)" in
     kustomize_asset=linux_amd64 kustomize_sum=cb9e31198d3f63b44848bd0afc4c8efc56e6cfef9c93a4a39a211940e6decd61
     kubeconform_asset=linux-amd64 kubeconform_sum=9bc2bffbf71f261128533edaf912153948b7ff238f9a531ae6d34466ec287883
     kube_linter_asset=linux kube_linter_sum=1a6d8419b11971372971fdbc22682b684ebfb7cf1c39591662d1b6ca736c41df
-    shellcheck_asset=linux.x86_64 shellcheck_sum=b7af85e41cc99489dcc21d66c6d5f3685138f06d34651e6d34b42ec6d54fe6f6 ;;
+    shellcheck_asset=linux.x86_64 shellcheck_sum=b7af85e41cc99489dcc21d66c6d5f3685138f06d34651e6d34b42ec6d54fe6f6
+    flux_asset=linux_amd64 flux_sum=b4d22673e9246cbd628881f1a9ef3b090085dced291e42d804555cee8e8d42c5 ;;
   Linux-aarch64 | Linux-arm64)
     tofu_asset=linux_arm64 tofu_sum=9c1ef375aa1852db0b2888aa921b640c71f8140d4682aa4fec99378a64fa7dc3
     sops_asset=linux.arm64 sops_sum=53b0abacd38ef1b12a66d6c100956691b9cefce018d91f81e73ddf7438b94d77
     kustomize_asset=linux_arm64 kustomize_sum=9867b76482cfc6d25b546abc1d2b5a32bd137505aba640649b4b378f64f6d68f
     kubeconform_asset=linux-arm64 kubeconform_sum=1f53fc8e81258197a35e8603054162a5af1de8c5af13746c71ab680d9534ed87
     kube_linter_asset=linux_arm64 kube_linter_sum=802e1b09eabd08f6f0a060a6b8ab2bf7bc7e6bf4f673bb2692303704c84b3e22
-    shellcheck_asset=linux.aarch64 shellcheck_sum=68a8133197a50beb8803f8d42f9908d1af1c5540d4bb05fdfca8c1fa47decefc ;;
+    shellcheck_asset=linux.aarch64 shellcheck_sum=68a8133197a50beb8803f8d42f9908d1af1c5540d4bb05fdfca8c1fa47decefc
+    flux_asset=linux_arm64 flux_sum=6663c154755b732f43dc993d72321f71c2fc1ff0bcb94b2696e0a8638fa562b4 ;;
   Darwin-x86_64)
     tofu_asset=darwin_amd64 tofu_sum=a73720443ba38712d7d96dc1e857add02c15a790919c653ad07492e9952f8c27
     sops_asset=darwin.amd64 sops_sum=42162d5cef10b74fcf80a045a70e658d7ce6e63d6ea1be6f347e44015714468d
     kustomize_asset=darwin_amd64 kustomize_sum=d08fb85846c3d977f0e2a66e7ff45f1b5264c294685e5e726e1a8bdfe0da8dee
     kubeconform_asset=darwin-amd64 kubeconform_sum=71dbc87ac9f24099a62b93570e65aa06312ba6ac8aea63b7f86e9d999edf5a92
     kube_linter_asset=darwin kube_linter_sum=c62e8af3c9df2557c7a3922119ea1b35597794737d1ccad493f63a0d66e7b8fc
-    shellcheck_asset=darwin.x86_64 shellcheck_sum=c2c15e08df0e8fbc374c335b230a7ee958c313fa5714817a59aa59f1aa594f51 ;;
+    shellcheck_asset=darwin.x86_64 shellcheck_sum=c2c15e08df0e8fbc374c335b230a7ee958c313fa5714817a59aa59f1aa594f51
+    flux_asset=darwin_amd64 flux_sum=c3c3532c8c6cf689ef7b93125b33dc170df84a9d5d036f578568bfdf88a2d7e6 ;;
   Darwin-arm64)
     tofu_asset=darwin_arm64 tofu_sum=be78f659f04ef06a9dbd9b3934d46af95d787a3aa38396d459dea395261816a9
     sops_asset=darwin.arm64 sops_sum=b97c0d434aab577dc40310e8d22ff9e45eef4c80638ab978daae9b4681c59286
     kustomize_asset=darwin_arm64 kustomize_sum=4cbb08e209d8fff47cd60bfb6407daaf5ee699f9b9295849a1065024fac2d1ef
     kubeconform_asset=darwin-arm64 kubeconform_sum=f84f4dfbebf4a6b0b230385fa065a39ea35e02608c2b50d025dcf64775a69d67
     kube_linter_asset=darwin_arm64 kube_linter_sum=6e3443a8ff8625a9fc31a38682c783988d7559018f7ff707a4f8c77c18c92f14
-    shellcheck_asset=darwin.aarch64 shellcheck_sum=339b930feb1ea764467013cc1f72d09cd6b869ebf1013296ba9055ab2ffbd26f ;;
+    shellcheck_asset=darwin.aarch64 shellcheck_sum=339b930feb1ea764467013cc1f72d09cd6b869ebf1013296ba9055ab2ffbd26f
+    flux_asset=darwin_arm64 flux_sum=7008a758da4b8d57c5845aad6552f256d4d23630c2b2de2ca8da362f9a48c126 ;;
   *) echo "no check tools for $(uname -s) $(uname -m)" >&2; exit 1 ;;
 esac
 
@@ -94,3 +99,6 @@ fetch sops "$sops_version" \
 fetch tofu "$tofu_version" \
   "https://github.com/opentofu/opentofu/releases/download/v$tofu_version/tofu_${tofu_version}_$tofu_asset.tar.gz" \
   "$tofu_sum" tofu
+fetch flux "$flux_version" \
+  "https://github.com/fluxcd/flux2/releases/download/v$flux_version/flux_${flux_version}_$flux_asset.tar.gz" \
+  "$flux_sum" flux

@@ -1,14 +1,6 @@
-# Every object of the Tenyard cluster that lives in git:
-#   kubectl diff -k clusters/tenyard    what an apply would change
-#   kubectl apply -k clusters/tenyard   apply it
-# Secrets stay outside (install/README.md names each one), and so do the objects k3s makes.
+# The root of the Tenyard cluster, the path Flux syncs (flux-system/gotk-sync.yaml): Flux
+# itself and its four layers (layers.yaml). Each layer is its own kustomization; Flux applies
+# them in order. To start Flux on a new cluster, install/README.md "Flux".
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-resources:
-  - ../../install/cluster
-  - ../../install/ccm
-  - ../../install/csi
-  - ../../install/autoscaler
-  - ../../install/monitoring
-  - ../../install/server
-  - ../../install/backup
+resources: [flux-system, layers.yaml]

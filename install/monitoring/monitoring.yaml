@@ -5,10 +5,6 @@
 # a Hetzner volume, so it outlives the pod. vmui on port 8428 answers queries
 # (`kubectl -n monitoring port-forward svc/victoria-metrics 8428`, then /vmui).
 apiVersion: v1
-kind: Namespace
-metadata: { name: monitoring }
----
-apiVersion: v1
 kind: ServiceAccount
 metadata: { name: victoria-metrics, namespace: monitoring }
 ---

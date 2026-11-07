@@ -5,21 +5,44 @@ first cluster lives on `tenbox-ci` (cx33, 4 vCPU, 8 GB, Ubuntu 24.04), next to t
 Actions runners and Docker that were already there. k3s reserves one core and 1.5 GiB for
 them, so pods see 3 cores and about 6 GB.
 
-## The cluster in git
+## The cluster in git: Flux
 
-`clusters/tenyard/kustomization.yaml` holds every object of the cluster that lives in git, one
-kustomization per component under `install/`: `cluster` (the namespace `tenbox` and the
-LimitRange), `ccm`, `csi`, `autoscaler`, `monitoring` (with Grafana and its tailnet node) and
-`server`. An upstream file (the CSI driver, the CCM) is kept as its release ships it, and every
-change to it is a patch next to it. Secrets stay outside; the steps below name each one.
+Every object of the cluster that lives in git has one kustomization per component under
+`install/`: `cluster` (every namespace and the LimitRange), `ccm`, `csi`, `autoscaler`,
+`monitoring` (with Grafana and its tailnet node), `server` and `backup`. An upstream file (the
+CSI driver, the CCM) is kept as its release ships it, and every change to it is a patch next to
+it.
+
+Flux applies them from `main` (`clusters/tenyard/`): its source and kustomize controllers run on
+the control-plane server, read this repo every minute over HTTPS (it is public: no deploy key)
+and apply four layers in order (`layers.yaml`): `cluster`, then `secrets` (decrypted in the
+cluster with the age key), then `infrastructure` (the CCM, the CSI driver and the autoscaler,
+ready before the next one), then `apps`. Flux deletes an object that leaves git (prune), but
+never a namespace (annotation `kustomize.toolkit.fluxcd.io/prune: disabled`), and puts back a
+field changed by hand at its next run, every 10 minutes. So a change goes through a PR: merge,
+and it is on the cluster within minutes.
 
 ```
-kubectl diff -k clusters/tenyard    # what an apply would change; nothing, when git and the cluster agree
-kubectl apply -k clusters/tenyard
+flux get kustomizations              # the four layers and the revision of main they applied
+flux reconcile source git tenyard    # read main now, not in a minute
+flux diff kustomization apps --path clusters/tenyard/apps   # what a change on this branch would do
 ```
 
-Apply with no box running, after a snapshot. The steps below are how the cluster was built; each
-one applies its own component.
+`flux` is in `.tools/bin` (`tools/install.sh`), with `KUBECONFIG` set.
+
+Flux on a new cluster, once (after `kubectl` works; the age key is its one Secret by hand):
+
+```
+kubectl apply -k clusters/tenyard/flux-system
+kubectl -n flux-system create secret generic sops-age --from-file=age.agekey=$HOME/.config/tenyard/age.key
+```
+
+The first layer applied on a cluster that has the objects already takes them over and changes
+nothing in them. Flux is pinned to one version (`flux_version` in `tools/install.sh`); an update
+writes `gotk-components.yaml` again with the command named in its kustomization.
+
+The steps below are how the cluster was first built, before Flux; each one applies its own
+component.
 
 ## Hetzner resources: `infra/`
 
@@ -62,8 +85,10 @@ It is not the key of any other project.
 export SOPS_AGE_KEY_FILE=~/.config/tenyard/age.key
 .tools/bin/sops secrets/<namespace>/<name>.sops.yaml   # make or change one in $EDITOR
 tools/apply-secrets.sh --diff                          # what would change, values hidden
-tools/apply-secrets.sh
 ```
+
+Flux applies them (layer `secrets`): a changed file is on the cluster within minutes of its
+merge.
 
 A Secret that is already on the cluster goes to git with:
 
@@ -418,7 +443,8 @@ the token of this project: never start a copy of the datastore in another projec
 agent, or its autoscaler and CSI driver act on this project.
 
 **The project is lost**: a new Hetzner project, built from git, the age key and the backups.
-13 minutes in the rehearsal:
+13 minutes in the rehearsal, which ran before Flux: steps 4 and 5 then were `kubectl apply -k`
+and `tools/apply-secrets.sh`.
 
 1. In the Hetzner console: the project, a read and write API token, and the SSH keys `tenzel`
    (for `infra/`) and `main` (the autoscaler gives it to each worker, `HCLOUD_SSH_KEY`).
@@ -426,12 +452,12 @@ agent, or its autoscaler and CSI driver act on this project.
    has no cx33 (`resource_unavailable`; in the rehearsal, hel1 and fsn1 had none, nbg1 did).
    k3s is ready about 1 minute after the server.
 3. The kubeconfig: `/etc/rancher/k3s/k3s.yaml` of the server, with its public IP.
-4. `kubectl apply -k clusters/tenyard`.
-5. The Secrets: `secrets/kube-system/hcloud.sops.yaml` and `secrets/tenbox-server/hcloud.sops.yaml`
-   hold the token of the old project; put the new one in both with `sops` first, then
-   `tools/apply-secrets.sh`. The pods that wait for a Secret start by themselves; the CCM
-   then initializes the node and the CSI driver makes the volumes.
-6. `install/autoscaler/autoscaler.sh <server> 10.1.0.2`.
+4. The Secrets: `secrets/kube-system/hcloud.sops.yaml` and `secrets/tenbox-server/hcloud.sops.yaml`
+   hold the token of the old project; put the new one in both with `sops` and merge it first.
+5. Flux ("The cluster in git: Flux"): it applies the layers; the CCM initializes the node and
+   the CSI driver makes the volumes. The layer `infrastructure` waits for the autoscaler, which
+   waits for its Secret: the next step.
+6. `install/autoscaler/autoscaler.sh <server> 10.1.0.2`, once Flux has made its Deployment.
 7. `tools/restore-server.sh <day>`: the server's database from the backup.
 8. `install/check.sh`: the autoscaler starts a worker for it (2 minutes).
 9. The login sync of tenbox writes `claude-credentials` again
