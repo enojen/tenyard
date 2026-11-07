@@ -21,3 +21,5 @@ jobs:
         run: tools/check-scripts.sh
       - name: Secrets
         run: tools/check-secrets.sh
+      - name: Infra
+        run: tools/check-infra.sh

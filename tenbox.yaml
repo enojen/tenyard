@@ -13,6 +13,7 @@ checks:
     manifests: tools/check-manifests.sh
     scripts: tools/check-scripts.sh
     secrets: tools/check-secrets.sh
+    infra: tools/check-infra.sh
 
 tracker: { kind: github }
 id: 3ic9c0

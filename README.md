@@ -14,6 +14,8 @@ box runs belongs to Tenyard. Tenyard never knows what an image does, only how to
 
 ## What is here today
 
+- `infra/`: the Hetzner side, as OpenTofu: the network, the control-plane server and the
+  firewalls (`install/README.md`, "Hetzner resources").
 - `clusters/tenyard/`: every object of the cluster that lives in git, as one kustomization;
   `kubectl diff -k clusters/tenyard` shows what differs from the cluster.
 - `install/`: how the cluster is set up, on one Hetzner server, with a rollback, and the
@@ -22,12 +24,13 @@ box runs belongs to Tenyard. Tenyard never knows what an image does, only how to
 - `task/`: one agent run as a Job on the task's volume, with the Secrets it reads and the
   services its tests need.
 - `tools/`: the checks of every PR and the tools of the Secrets. `install.sh` downloads
-  kustomize, kubeconform, kube-linter, shellcheck and sops, pinned by version and sha256, into
-  `.tools/bin`. `check-manifests.sh` validates every manifest against the API of the cluster's
-  version and lints it; an object that breaks a kube-linter check on purpose says why in an
-  `ignore-check.kube-linter.io/<check>` annotation. `check-scripts.sh` runs shellcheck.
+  kustomize, kubeconform, kube-linter, shellcheck, sops and tofu, pinned by version and sha256,
+  into `.tools/bin`. `check-manifests.sh` validates every manifest against the API of the
+  cluster's version and lints it; an object that breaks a kube-linter check on purpose says why
+  in an `ignore-check.kube-linter.io/<check>` annotation. `check-scripts.sh` runs shellcheck.
   `check-secrets.sh` fails on a Secret that is not encrypted; `apply-secrets.sh` decrypts and
-  applies the ones in `secrets/`.
+  applies the ones in `secrets/`. `check-infra.sh` checks the format of `infra/` and validates
+  it, with no token and no state.
 - `secrets/`: the Secrets of the cluster, encrypted with SOPS to the age key of Tenyard
   (`install/README.md`, "Secrets"); `docs/tokens.md` lists every token.
 

@@ -6,3 +6,8 @@ procs/target/
 secrets/**
 !secrets/*/
 !secrets/*/*.sops.yaml
+# infra/: the state and the values live in ~/.config/tenyard/tofu, never here.
+infra/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
