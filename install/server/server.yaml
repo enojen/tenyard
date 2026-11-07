@@ -83,8 +83,7 @@ spec:
       securityContext: { fsGroup: 1000 }
       containers:
         - name: server
-          image: ghcr.io/enojen/tenbox-server:latest
-          imagePullPolicy: Always
+          image: ghcr.io/enojen/tenbox-server:8fc319b19b5ec2ed368ad86be5d66bfeac007553@sha256:e1e60a9d2ae7ffb2d4896f223577addba581a1054110a57b80e6fbd4ac3134bd
           ports: [{ containerPort: 4300, name: http }]
           env:
             - name: HCLOUD_TOKEN
@@ -128,8 +127,7 @@ spec:
           securityContext: { fsGroup: 1000 }
           containers:
             - name: backup
-              image: ghcr.io/enojen/tenbox-server:latest
-              imagePullPolicy: Always
+              image: ghcr.io/enojen/tenbox-server:8fc319b19b5ec2ed368ad86be5d66bfeac007553@sha256:e1e60a9d2ae7ffb2d4896f223577addba581a1054110a57b80e6fbd4ac3134bd
               command: [sh, -c]
               args:
                 - >-

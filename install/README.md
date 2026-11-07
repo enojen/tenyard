@@ -280,7 +280,16 @@ kubectl patch pv "$(kubectl -n tenbox-server get pvc tenbox-server -o jsonpath='
 kubectl get --raw /api/v1/namespaces/tenbox-server/services/tenbox-server:4300/proxy/health
 ```
 
-A new image needs `kubectl -n tenbox-server rollout restart deploy/tenbox-server`.
+Both images (the Deployment and the `backup` CronJob) name one commit of enojen/tenbox and its
+digest, so a restart never pulls another server and a rollback is one revert. A new server is a
+commit here that changes both lines; tenbox's `server.yml` pushes every commit of `main` with its
+sha as the tag, and the digest of a tag is listed by
+
+```
+gh api /user/packages/container/tenbox-server/versions -q '.[] | "\(.name) \(.metadata.container.tags)"'
+```
+
+Then `kubectl apply -f install/server/server.yaml`.
 
 ## Check
 
@@ -309,4 +318,5 @@ hcloud server rebuild --image <snapshot id> <server>
 | VictoriaMetrics single node | v1.154.1 |
 | kube-state-metrics | v2.20.0 |
 | procs (box sidecar) | `procs/`, image by commit |
+| tenbox server | enojen/tenbox commit and digest, `install/server/server.yaml` |
 | kubectl on the computer | v1.36.5 |
