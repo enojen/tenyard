@@ -29,8 +29,9 @@ box runs belongs to Tenyard. Tenyard never knows what an image does, only how to
   cluster's version and lints it; an object that breaks a kube-linter check on purpose says why
   in an `ignore-check.kube-linter.io/<check>` annotation. `check-scripts.sh` runs shellcheck.
   `check-secrets.sh` fails on a Secret that is not encrypted, also before each commit
-  (`.githooks/pre-commit`); `apply-secrets.sh` decrypts and applies the ones in `secrets/`. `check-infra.sh` checks the format of `infra/` and validates
-  it, with no token and no state.
+  (`.githooks/pre-commit`); `apply-secrets.sh` decrypts and applies the ones in `secrets/`.
+  `check-infra.sh` checks the format of `infra/` and validates it, with no token and no state.
+  `check-backup.sh` downloads the backups of a day and checks that they open.
 - `secrets/`: the Secrets of the cluster, encrypted with SOPS to the age key of Tenyard
   (`install/README.md`, "Secrets"); `docs/tokens.md` lists every token.
 
