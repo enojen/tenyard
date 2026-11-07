@@ -32,9 +32,9 @@ Hetzner project was rebuilt from git, the age key and the backups in 13 minutes.
 
 ```
 tenbox machine run TEN-1 -- tenbox build TEN-1
-  └─ the volume of TEN-1 (kept between runs) and a Job: the box image, one command, a resource class
-       └─ no room on a worker: the autoscaler adds a Hetzner server, it joins in about a minute
-            └─ the box opens the task, runs the command and ends; the volume stays
+ └─ a Job and the task's volume: the box image, one command, a resource class
+     └─ no room on a worker: the autoscaler adds one, it joins in about a minute
+         └─ the box opens the task, runs the command and ends; the volume stays
 ```
 
 ```sh
@@ -55,11 +55,11 @@ downloads (OpenTofu, Flux, sops, kustomize and the linters, each pinned by versi
 ## Build a cluster
 
 ```sh
-tools/install.sh                                    # the tools, into .tools/bin
-tofu -chdir=infra apply                             # network, firewalls, the control-plane server with k3s
-kubectl apply -k clusters/tenyard/flux-system       # Flux; then its age key Secret and a second apply
-install/autoscaler/autoscaler.sh <server> 10.1.0.2  # the join token and the worker pools
-install/check.sh                                    # a pod on a new worker writes a volume and reaches the internet
+tools/install.sh                               # the tools, into .tools/bin
+tofu -chdir=infra apply                        # network, firewalls, a server with k3s
+kubectl apply -k clusters/tenyard/flux-system  # Flux, its age key, apply again
+install/autoscaler/autoscaler.sh <ip> 10.1.0.2 # the worker pools
+install/check.sh                               # a pod on a new worker
 ```
 
 These are the bones. The full steps, with the state of `infra/`, the Secrets and a restore from
