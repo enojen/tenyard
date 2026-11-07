@@ -7,7 +7,8 @@
 # out of the pods (768Mi reserved, eviction under 256Mi free): without it, boxes that fill their
 # requests take the whole RAM and the kernel kills the CSI node plugin and boxes under their
 # limit (#36). eviction-hard names every signal, as the kubelet sets the unnamed ones to zero;
-# it sits in the k3s config file, as systemd reads `%` in a unit line. autoscaler.sh fills
+# it sits in the k3s config file, as systemd reads `%` in a unit line. A pod gets at most 2048
+# PIDs, so a fork loop stops in its box (docs/numbers.md). autoscaler.sh fills
 # __SERVER_IP__ and __TOKEN__.
 write_files:
   - path: /etc/rancher/k3s/config.yaml
@@ -15,6 +16,7 @@ write_files:
       kubelet-arg:
         - system-reserved=cpu=250m,memory=768Mi
         - eviction-hard=memory.available<256Mi,nodefs.available<10%,imagefs.available<15%,nodefs.inodesFree<5%,imagefs.inodesFree<5%
+        - pod-max-pids=2048
 runcmd:
   - until ip -4 -o addr | grep -q 'inet 10\.1\.'; do sleep 1; done
   - >-
