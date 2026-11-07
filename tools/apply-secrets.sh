@@ -8,8 +8,8 @@ root="$(cd "$(dirname "$0")/.." && pwd)"
 bin="$root/.tools/bin"
 cd "$root"
 export SOPS_AGE_KEY_FILE="${SOPS_AGE_KEY_FILE:-$HOME/.config/tenyard/age.key}"
-action=apply
-if [ "${1:-}" = --diff ]; then action=diff; fi
+action="apply"
+if [ "${1:-}" = --diff ]; then action="diff"; fi
 
 status=0
 while IFS= read -r file; do
