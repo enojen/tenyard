@@ -33,9 +33,16 @@ flux diff kustomization apps --path clusters/tenyard/apps   # what a change on t
 Flux on a new cluster, once (after `kubectl` works; the age key is its one Secret by hand):
 
 ```
-kubectl apply -k clusters/tenyard/flux-system
+kubectl apply -k clusters/tenyard/flux-system     # its CRDs; the GitRepository and the Kustomization fail: no CRD yet
 kubectl -n flux-system create secret generic sops-age --from-file=age.agekey=$HOME/.config/tenyard/age.key
+kubectl apply -k clusters/tenyard/flux-system     # now they are made, and Flux starts the layers
 ```
+
+On the cluster on 2026-11-07 the four layers were applied 1.5 minutes after the second apply
+(`docs/numbers.md`).
+
+Never `kubectl rollout restart` a Deployment of Flux's: Flux removes the annotation it writes and
+the pods restart once more. Delete the pod instead (`kubectl delete pod -l app=<name>`).
 
 The first layer applied on a cluster that has the objects already takes them over and changes
 nothing in them. Flux is pinned to one version (`flux_version` in `tools/install.sh`); an update

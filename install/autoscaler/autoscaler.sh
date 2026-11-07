@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Writes the Secret `tenyard-autoscaler` of the cluster autoscaler: the pool config
 # (cluster-config.json: the image and the worker cloud-init) and a bootstrap token that joins
-# workers only. A second run keeps the token and replaces the config. Then it restarts the
-# Deployment, which Flux applies (layer infrastructure), as the autoscaler reads the Secret at
-# start. Needs KUBECONFIG, kubectl, jq and ssh to the server as root (the token is made with
+# workers only. A second run keeps the token and replaces the config. Then it deletes the pod of
+# the Deployment, which Flux applies (layer infrastructure), as the autoscaler reads the Secret at
+# start. Not `rollout restart`: Flux removes the annotation it writes and restarts it once more. Needs KUBECONFIG, kubectl, jq and ssh to the server as root (the token is made with
 # `k3s token create`).
 #
 # Usage: autoscaler.sh <server ssh host> <server ip on tenyard-net>
@@ -32,5 +32,5 @@ printf %s "$token" > "$tmp/token"
 kubectl -n "$ns" create secret generic tenyard-autoscaler \
   --from-file=cluster-config.json="$tmp/cluster-config.json" --from-file=token="$tmp/token" \
   --dry-run=client -o yaml | kubectl -n "$ns" apply -f -
-kubectl -n "$ns" rollout restart deployment/cluster-autoscaler
+kubectl -n "$ns" delete pod -l app=cluster-autoscaler
 kubectl -n "$ns" rollout status deployment/cluster-autoscaler --timeout=120s
