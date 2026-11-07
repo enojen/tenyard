@@ -1,0 +1,19 @@
+#cloud-config
+# A new control-plane server: k3s server with the flags of install/README.md, steps 2 and 11.
+# Not tried on a fresh server yet: the rebuild rehearsal (#69) does that. It waits for its
+# tenyard-net address and finds the private interface by it, as its name differs between server
+# types. --tls-san adds the public IP to the API certificate, so kubectl works from your
+# computer. The kubelet keeps one core and 1.5 GiB for the GitHub runners on the server. The
+# CCM sets the providerID; the taint keeps the boxes on the workers. After k3s: the Secrets and
+# `kubectl apply -k clusters/tenyard` (install/README.md).
+runcmd:
+  - until ip -4 -o addr | grep -q 'inet 10\.1\.0\.2/'; do sleep 1; done
+  - >-
+    iface="$(ip -4 -o addr | awk '/inet 10\.1\.0\.2\// { print $2 }')";
+    public_ip="$(curl -sf http://169.254.169.254/hetzner/v1/metadata/public-ipv4)";
+    curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION=v1.36.5+k3s1
+    INSTALL_K3S_EXEC="server --tls-san $public_ip --disable traefik
+    --kubelet-arg=system-reserved=cpu=1,memory=1.5Gi
+    --node-ip 10.1.0.2 --advertise-address 10.1.0.2 --flannel-iface $iface
+    --disable-cloud-controller --kubelet-arg=cloud-provider=external
+    --node-taint node-role.kubernetes.io/control-plane:NoSchedule" sh -

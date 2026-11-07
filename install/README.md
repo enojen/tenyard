@@ -21,6 +21,36 @@ kubectl apply -k clusters/tenyard
 Apply with no box running, after a snapshot. The steps below are how the cluster was built; each
 one applies its own component.
 
+## Hetzner resources: `infra/`
+
+OpenTofu with the hcloud provider holds the Hetzner side of the cluster: the network
+`tenyard-net` and its subnet, the control-plane server and its address there, the firewall of the
+control plane (SSH, and the Kubernetes API from your computer) and the empty firewall of the
+workers. The Hetzner project holds other servers too; `infra/` owns only these. It never owns an
+SSH key, a volume (the CSI driver makes them), a worker (the autoscaler makes them) or a
+snapshot. The control-plane server has `prevent_destroy`, and a change to its image, SSH keys or
+cloud-init never touches the running one: GitHub runners of other projects share it.
+
+The state and the values stay outside this public repo, in `~/.config/tenyard/tofu/`:
+`terraform.tfstate`, and `tenyard.tfvars` with `admin_ips` (your computer, for 6443),
+`ssh_keys` (names, for a new server) and `import_ids`. The token is `HCLOUD_TOKEN`.
+
+```
+cd infra
+tofu init -backend-config=path=$HOME/.config/tenyard/tofu/terraform.tfstate
+tofu plan -var-file=$HOME/.config/tenyard/tofu/tenyard.tfvars    # read only
+tofu apply -var-file=$HOME/.config/tenyard/tofu/tenyard.tfvars
+```
+
+The resources were made by hand (steps 1, 7 and 9 below). `imports.tf` takes them into the
+state: the first `apply` shows `6 to import, 0 to add, 0 to change, 0 to destroy`, and changes
+nothing on Hetzner. Delete `imports.tf` and `import_ids` after it. A plan that wants to destroy or
+replace anything is not applied. When your IP changes, change `admin_ips` and apply.
+
+`infra/control-plane.yaml` is the cloud-init of a new control-plane server: k3s with the flags
+of steps 2 and 11. It has not run on a fresh server yet. The worker cloud-init and the
+autoscaler's pool config still come from `install/autoscaler/autoscaler.sh`.
+
 ## Secrets
 
 The Secrets live in `secrets/<namespace>/<name>.sops.yaml`, encrypted with SOPS to the age key
