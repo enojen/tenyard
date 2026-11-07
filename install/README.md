@@ -32,8 +32,8 @@ snapshot. The control-plane server has `prevent_destroy`, and a change to its im
 cloud-init never touches the running one: GitHub runners of other projects share it.
 
 The state and the values stay outside this public repo, in `~/.config/tenyard/tofu/`:
-`terraform.tfstate`, and `tenyard.tfvars` with `admin_ips` (your computer, for 6443),
-`ssh_keys` (names, for a new server) and `import_ids`. The token is `HCLOUD_TOKEN`.
+`terraform.tfstate`, and `tenyard.tfvars` with `admin_ips` (your computer, for 6443) and
+`ssh_keys` (names, for a new server). The token is `HCLOUD_TOKEN`.
 
 ```
 cd infra
@@ -42,10 +42,9 @@ tofu plan -var-file=$HOME/.config/tenyard/tofu/tenyard.tfvars    # read only
 tofu apply -var-file=$HOME/.config/tenyard/tofu/tenyard.tfvars
 ```
 
-The resources were made by hand (steps 1, 7 and 9 below). `imports.tf` takes them into the
-state: the first `apply` shows `6 to import, 0 to add, 0 to change, 0 to destroy`, and changes
-nothing on Hetzner. Delete `imports.tf` and `import_ids` after it. A plan that wants to destroy or
-replace anything is not applied. When your IP changes, change `admin_ips` and apply.
+The resources were made by hand (steps 1, 7 and 9 below) and imported into the state once, with
+an `imports.tf` that is in git history. A plan that wants to destroy or replace anything is not
+applied. When your IP changes, change `admin_ips` and apply.
 
 `infra/control-plane.yaml` is the cloud-init of a new control-plane server: k3s with the flags
 of steps 2 and 11. It has not run on a fresh server yet. The worker cloud-init and the
