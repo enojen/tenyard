@@ -106,6 +106,9 @@ kind: Deployment
 metadata:
   name: cluster-autoscaler
   namespace: kube-system
+  annotations:
+    ignore-check.kube-linter.io/run-as-non-root: "as upstream ships it; the change is tried on the cluster first"
+    ignore-check.kube-linter.io/no-read-only-root-fs: "as upstream ships it; the change is tried on the cluster first"
 spec:
   replicas: 1
   selector:

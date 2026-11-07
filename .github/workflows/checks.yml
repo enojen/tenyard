@@ -1,0 +1,21 @@
+name: checks
+# The manifest and script checks of tenbox.yaml on every PR. tools/install.sh pins the tools.
+on:
+  pull_request:
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tools
+        run: tools/install.sh
+      - name: Manifests
+        run: tools/check-manifests.sh
+      - name: Scripts
+        run: tools/check-scripts.sh

@@ -65,7 +65,12 @@ spec:
 ---
 apiVersion: apps/v1
 kind: Deployment
-metadata: { name: tenbox-server, namespace: tenbox-server }
+metadata:
+  name: tenbox-server
+  namespace: tenbox-server
+  annotations:
+    ignore-check.kube-linter.io/run-as-non-root: "runs as its image's user; the change is tried on the cluster first"
+    ignore-check.kube-linter.io/no-read-only-root-fs: "writes to its root file system; the change is tried on the cluster first"
 spec:
   replicas: 1
   strategy: { type: Recreate }
@@ -108,7 +113,13 @@ spec:
 # The volume attaches to one server, so the backup runs on the same node as the server pod.
 apiVersion: batch/v1
 kind: CronJob
-metadata: { name: backup, namespace: tenbox-server }
+metadata:
+  name: backup
+  namespace: tenbox-server
+  annotations:
+    ignore-check.kube-linter.io/run-as-non-root: "runs as its image's user; the change is tried on the cluster first"
+    ignore-check.kube-linter.io/no-read-only-root-fs: "writes to its root file system; the change is tried on the cluster first"
+    ignore-check.kube-linter.io/job-ttl-seconds-after-finished: "the ttl removes a finished backup Job; the history limits never keep one longer"
 spec:
   schedule: "0 3 * * *"
   concurrencyPolicy: Forbid

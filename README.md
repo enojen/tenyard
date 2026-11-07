@@ -18,6 +18,11 @@ box runs belongs to Tenyard. Tenyard never knows what an image does, only how to
   workers that the cluster autoscaler adds for the boxes and removes when they are idle.
 - `task/`: one agent run as a Job on the task's volume, with the Secrets it reads and the
   services its tests need.
+- `tools/`: the checks of every PR. `install.sh` downloads kubeconform, kube-linter and
+  shellcheck, pinned by version and sha256, into `.tools/bin`; `check-manifests.sh` validates
+  every manifest against the API of the cluster's version and lints it, `check-scripts.sh` runs
+  shellcheck. An object that breaks a kube-linter check on purpose says why in an
+  `ignore-check.kube-linter.io/<check>` annotation.
 
 Everything else (snapshots, the queue, the preview URLs, the resize controller) comes step by
 step; the README grows with the code.

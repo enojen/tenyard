@@ -1,7 +1,8 @@
 project: tenyard
-setup: bun install
+setup: bun install && tools/install.sh
 
-# sim/ is the only code: the replay of recorded runs through worker policies (#32).
+# sim/ is the only code: the replay of recorded runs through worker policies (#32). The
+# manifests and the shell scripts get their own checks; CI runs them on every PR.
 checks:
   fast:
     # sim/ is empty until the first part of #32: each check passes on no file.
@@ -9,6 +10,8 @@ checks:
     unit: bun test sim --pass-with-no-tests
     format: bunx biome format --no-errors-on-unmatched sim
     lint: bunx biome check --formatter-enabled=false --no-errors-on-unmatched sim
+    manifests: tools/check-manifests.sh
+    scripts: tools/check-scripts.sh
 
 tracker: { kind: github }
 id: 3ic9c0

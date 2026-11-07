@@ -50,7 +50,11 @@ data:
 ---
 apiVersion: apps/v1
 kind: Deployment
-metadata: { name: tailscale-grafana, namespace: monitoring }
+metadata:
+  name: tailscale-grafana
+  namespace: monitoring
+  annotations:
+    ignore-check.kube-linter.io/env-var-secret: "TS_KUBE_SECRET names the Secret that keeps the node key; it holds no secret"
 spec:
   replicas: 1
   strategy: { type: Recreate }
