@@ -76,7 +76,9 @@ kubectl -n <namespace> get secret <name> -o json \
 ```
 
 `.gitignore` keeps any other file in `secrets/` out of git, and `tools/check-secrets.sh` fails on
-a file there that sops did not encrypt and on a Secret with values in `clusters/tenyard`.
+a file there that sops did not encrypt and on a Secret with values in `clusters/tenyard`. It runs
+before each commit too (`.githooks/pre-commit`, set by `tools/install.sh`), on the files as the
+commit holds them: in a public repo, a check after the push is too late.
 
 ## Steps
 

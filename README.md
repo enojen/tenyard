@@ -28,8 +28,8 @@ box runs belongs to Tenyard. Tenyard never knows what an image does, only how to
   into `.tools/bin`. `check-manifests.sh` validates every manifest against the API of the
   cluster's version and lints it; an object that breaks a kube-linter check on purpose says why
   in an `ignore-check.kube-linter.io/<check>` annotation. `check-scripts.sh` runs shellcheck.
-  `check-secrets.sh` fails on a Secret that is not encrypted; `apply-secrets.sh` decrypts and
-  applies the ones in `secrets/`. `check-infra.sh` checks the format of `infra/` and validates
+  `check-secrets.sh` fails on a Secret that is not encrypted, also before each commit
+  (`.githooks/pre-commit`); `apply-secrets.sh` decrypts and applies the ones in `secrets/`. `check-infra.sh` checks the format of `infra/` and validates
   it, with no token and no state.
 - `secrets/`: the Secrets of the cluster, encrypted with SOPS to the age key of Tenyard
   (`install/README.md`, "Secrets"); `docs/tokens.md` lists every token.
@@ -122,14 +122,14 @@ A sidecar is a native one, an init container with `restartPolicy: Always`: the b
 after its startup probe passes, and the Job ends when the box ends. Its RAM is its own, on top of
 the class of the box; data in an `emptyDir` with `medium: Memory` counts in that RAM.
 
-The Job reads four Secrets in the namespace. `task/secrets.sh` writes the first three from the
-files on your computer (the agent's own login sync also writes the last two of them); the
-agent writes the project Secret before each Job (tenbox: `tenbox machine run`):
+The Job reads four Secrets in the namespace. The first two are in `secrets/tenbox/`
+(`tools/apply-secrets.sh`); the agent's login sync writes the third, and the agent writes the
+project Secret before each Job (tenbox: `tenbox machine run`):
 
 | Secret | Key | What |
 |---|---|---|
 | `ghcr` | `.dockerconfigjson` | pull secret of the private image (a GitHub token with `read:packages`) |
-| `github-token` | `token` | `gh` and `git push` in the box |
+| `github-token` | `token` | `gh` and `git push` in the box: a fine-grained token for the box repos only (`docs/tokens.md`) |
 | `claude-credentials` | `credentials.json` | the claude.ai login, `~/.claude/.credentials.json` |
 | `project-<project id>` | `tracker_api_key`, `ntfy_url`, `github_token` | the project's tracker key, notification topic and own GitHub token (all optional; the box prefers `github_token` over `github-token`) |
 

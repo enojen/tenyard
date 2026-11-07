@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Runs before every commit; tools/install.sh points git at this folder. This repo is public, so a
+# Secret that is not encrypted must never reach a commit: a check after the push is too late.
+set -euo pipefail
+root="$(git rev-parse --show-toplevel)"
+[ -x "$root/.tools/bin/sops" ] || { echo "pre-commit: run tools/install.sh first" >&2; exit 1; }
+exec "$root/tools/check-secrets.sh" --staged
