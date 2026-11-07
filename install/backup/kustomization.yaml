@@ -1,0 +1,8 @@
+# The daily copy of the k3s datastore and the server's database off the host (backup.yaml).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources: [backup.yaml]
+configMapGenerator:
+  - name: backup-script
+    namespace: tenbox-server
+    files: [backup.sh]

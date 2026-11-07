@@ -13,6 +13,7 @@ means a new token for every row marked "git".
 | `tenbox/ghcr`, `tenbox-server/ghcr` | pull the private images from GHCR (`read:packages` of a classic token) | GitHub, Settings, Developer settings, Personal access tokens (classic) | git |
 | `tenbox/github-token` `token` | `gh` and `git push` in the box: contents and pull requests of the box repos (fine-grained; `docs/numbers.md`, TEN-521). A project with its own `github_token` uses that one | GitHub, fine-grained tokens; a new box repo is added to it there | git |
 | `tenbox-server/ntfy` `url` | sends a notice to the ntfy topic | the topic name itself | git |
+| `tenbox-server/backup-bucket` `access_key`, `secret_key` | read and write every bucket of the Hetzner project's Object Storage: the daily copy off the host (install/README.md, "Backups") | Hetzner console, project, Security, S3 credentials | git |
 | `monitoring/grafana-admin` `password` | the Grafana admin login | `openssl rand` | git |
 | `tenbox/claude-credentials` | the claude.ai login of the boxes | `/login` on the computer | the login sync writes it (tenbox `machines/login/`), the only Secret it writes; never git |
 | `tenbox/project-<project id>` | a project's tracker key, ntfy URL and GitHub token | the project's `tenbox.yaml` and local layers | `tenbox machine run` writes it before each Job; never git |

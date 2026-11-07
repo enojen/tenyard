@@ -11,3 +11,4 @@ resources:
   - ../../install/autoscaler
   - ../../install/monitoring
   - ../../install/server
+  - ../../install/backup

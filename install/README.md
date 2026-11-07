@@ -326,7 +326,8 @@ runs in namespace `tenbox-server` on the server, next to the control plane
 - Its SQLite file is `/data/server.db` on a 10 GB Hetzner volume kept with `Retain`.
 - The CronJob `backup` writes `/data/backups/server-<date>.db` at 03:00 UTC with
   `tenbox-server backup` (read-only, no migration) and deletes copies older than 7 days. The
-  copies sit on the same volume: they cover a broken database, not a lost volume.
+  copies sit on the same volume: they cover a broken database, not a lost volume. The CronJob
+  `offsite-backup` copies the newest one off the host ("Backups").
 - The Service `tenbox-server:4300` answers inside the cluster only; tokens travel over plain
   HTTP until TLS.
 - Its account reads nodes, and pods, their logs, Jobs and volume claims of namespace `tenbox`,
@@ -365,6 +366,27 @@ gh api /user/packages/container/tenbox-server/versions -q '.[] | "\(.name) \(.me
 ```
 
 Then `kubectl apply -f install/server/server.yaml`.
+
+## Backups
+
+The CronJob `offsite-backup` (`install/backup/`) runs at 03:30 UTC on the control-plane server
+and puts two files in the bucket `tenyard-backups` of Hetzner Object Storage (hel1), both
+encrypted with age to the key of Tenyard:
+
+- `k3s/k3s-<day>.tar.gz.age`: the k3s datastore, an online SQLite backup of
+  `/var/lib/rancher/k3s/server/db/state.db`, and the server token next to it, which decrypts
+  the bootstrap data in the datastore. The datastore holds every Secret in plain text.
+- `server/server-<day>.db.gz.age`: that day's copy of the tenbox server's database, from the
+  CronJob `backup` at 03:00.
+
+The bucket deletes a file after 30 days. A failed run sends one ntfy notice. The bucket keys are
+the Secret `tenbox-server/backup-bucket` (`secrets/`); they are the S3 keys of the Hetzner project.
+The bucket was made once, private, with its expiry rule (S3 `PUT /tenyard-backups` and
+`PUT /tenyard-backups?lifecycle`, a rule `Expiration: Days 30`).
+
+`tools/check-backup.sh [<day>]` downloads the files of a day and decrypts them in RAM, in a
+container with no network: it prints the integrity check of both databases and a few counts.
+The first run, 2026-11-07: `k3s 726 KB, server 61 KB`, both `ok`.
 
 ## Check
 
