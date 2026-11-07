@@ -74,7 +74,7 @@ the backups, are in [`install/README.md`](install/README.md), "Rebuild".
 | `install/` | one kustomization per component: CCM, CSI, autoscaler, monitoring, the tenbox server, backups |
 | `secrets/` | the Secrets of the cluster, encrypted with SOPS |
 | `task/` | one run: the Job and volume templates, the resource classes, the services for tests |
-| `procs/` | the sidecar that splits a box's CPU and RAM by process group (Rust) |
+| `procs/` | the sidecar that splits a box's CPU and RAM by process group, in Rust ([`procs/README.md`](procs/README.md)) |
 | `tools/` | the checks of every PR, the backup check and the restore |
 
 ## Documentation

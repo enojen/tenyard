@@ -2,8 +2,8 @@
 //!
 //! It runs as a sidecar of the box in a pod that shares one process namespace, reads the pod's
 //! processes every `--interval-ms` and counts them into the groups of `--groups`
-//! (docs/reference.md, "Process metrics"). A broken groups file never stops the box: every process is then
-//! `other`, and the error is on stderr.
+//! (docs/reference.md, "Process metrics"). A broken groups file never stops the box: every
+//! process is then `other`, and the error is on stderr.
 //!
 //!   procs [--listen 0.0.0.0:9256] [--interval-ms 250] [--groups /config/groups.conf]
 //!         [--proc /proc] [--cgroup <path>]
