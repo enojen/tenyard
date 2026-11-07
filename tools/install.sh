@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
 # Downloads the tools of the checks, the Secrets and infra/ into .tools/bin, each one pinned by version and sha256. A second run
-# keeps a tool that is already there at its version. Linux and macOS, amd64 and arm64.
+# keeps a tool that is already there at its version. Linux and macOS, amd64 and arm64. It also
+# points git at the hooks in .githooks/.
 #
 # A new version: change it below, download the four archives, put their sha256 here.
 set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
 bin="$root/.tools/bin"
 mkdir -p "$bin"
+git -C "$root" config core.hooksPath .githooks
 
 kustomize_version=v5.8.3
 sops_version=v3.13.3

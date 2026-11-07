@@ -7,16 +7,16 @@ means a new token for every row marked "git".
 
 | Secret (namespace/name) | What it can do | Made in | Lives in |
 |---|---|---|---|
-| `kube-system/hcloud` `token` | Hetzner project, read and write: servers, volumes, networks. The CSI driver, the CCM and the autoscaler use it | Hetzner console, project, Security, API tokens | git (decision in #67) |
+| `kube-system/hcloud` `token` | Hetzner project, read and write: servers, volumes, networks. The CSI driver, the CCM and the autoscaler use it | Hetzner console, project, Security, API tokens | git |
 | `kube-system/hcloud` `network` | not a secret: the name of the private network | | git, with the token |
 | `tenbox-server/hcloud` `token` | Hetzner project, read only: the server reads each worker's type and price | Hetzner console | git |
 | `tenbox/ghcr`, `tenbox-server/ghcr` | pull the private images from GHCR (`read:packages` of a classic token) | GitHub, Settings, Developer settings, Personal access tokens (classic) | git |
-| `tenbox/github-token` `token` | `gh` and `git push` in the box: contents and pull requests of the box repos (fine-grained) | GitHub, fine-grained tokens | git |
+| `tenbox/github-token` `token` | `gh` and `git push` in the box: contents and pull requests of the box repos (fine-grained; `docs/numbers.md`, TEN-521). A project with its own `github_token` uses that one | GitHub, fine-grained tokens; a new box repo is added to it there | git |
 | `tenbox-server/ntfy` `url` | sends a notice to the ntfy topic | the topic name itself | git |
 | `monitoring/grafana-admin` `password` | the Grafana admin login | `openssl rand` | git |
-| `tenbox/claude-credentials` | the claude.ai login of the boxes | `/login` on the computer | the login sync writes it (tenbox `machines/login/`); never git |
+| `tenbox/claude-credentials` | the claude.ai login of the boxes | `/login` on the computer | the login sync writes it (tenbox `machines/login/`), the only Secret it writes; never git |
 | `tenbox/project-<project id>` | a project's tracker key, ntfy URL and GitHub token | the project's `tenbox.yaml` and local layers | `tenbox machine run` writes it before each Job; never git |
-| `kube-system/tenyard-autoscaler` | the k3s join token (joins workers only) and the worker cloud-init | `k3s token create` on the server | `install/autoscaler/autoscaler.sh` writes it; moves with #68 |
+| `kube-system/tenyard-autoscaler` | the k3s join token (joins workers only) and the worker cloud-init | `k3s token create` on the server | `install/autoscaler/autoscaler.sh` writes it; it was left out of #68 |
 | `monitoring/tailscale-auth` | a Tailscale auth key, used once | Tailscale admin console | by hand; can be deleted after the first start |
 | `monitoring/tailscale-grafana` | the Tailscale node key, written by the node itself | | the cluster only |
 

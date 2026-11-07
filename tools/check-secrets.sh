@@ -1,11 +1,16 @@
 #!/usr/bin/env bash
 # Fails on a Secret that is not encrypted: a file in secrets/ that is not
 # <namespace>/<name>.sops.yaml or that sops did not encrypt, and a Secret with data in the build
-# of clusters/tenyard. Needs no key. Run tools/install.sh first.
+# of clusters/tenyard. Needs no key. Run tools/install.sh first. With --staged (the pre-commit
+# hook) it reads the files of secrets/ as the next commit holds them, not as they are on disk.
 set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
 bin="$root/.tools/bin"
 cd "$root"
+staged=0
+if [ "${1:-}" = --staged ]; then staged=1; fi
+tmp="$(mktemp -d)"
+trap 'rm -rf "$tmp"' EXIT
 
 failed=0
 while IFS= read -r file; do
@@ -13,7 +18,9 @@ while IFS= read -r file; do
     secrets/*/*.sops.yaml) ;;
     *) echo "$file: secrets/ takes only <namespace>/<name>.sops.yaml" >&2; failed=1; continue ;;
   esac
-  if [ "$("$bin/sops" filestatus "$file" 2> /dev/null)" != '{"encrypted":true}' ]; then
+  copy="$file"
+  if [ "$staged" = 1 ]; then copy="$tmp/staged.yaml"; git show ":$file" > "$copy"; fi
+  if [ "$("$bin/sops" filestatus "$copy" 2> /dev/null)" != '{"encrypted":true}' ]; then
     echo "$file: not encrypted by sops" >&2
     failed=1
   fi
