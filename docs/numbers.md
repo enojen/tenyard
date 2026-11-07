@@ -153,3 +153,27 @@ the rehearsal's worker, volume and Job as new. The restored k3s datastore held 1
 
 Cost, every started hour billed: cx33 €0.0136, cpx32 €0.0569, four 10 GB volumes and one IPv4
 for an hour, about €0.08 in all.
+
+## Flux on the cluster (#70)
+
+Flux v2.9.6, its source and kustomize controllers on the control-plane server, 2026-11-07, UTC:
+
+| step | time |
+|---|---|
+| first `kubectl apply -k clusters/tenyard/flux-system`: CRDs and controllers | 16:35:10 |
+| controllers ready | 16:35:30 |
+| second apply, after the Secret `sops-age`: the GitRepository and the root Kustomization | 16:37:11 |
+| all five Kustomizations `Ready` at `main@674aefd` | 16:38:48 |
+
+| | RAM in use | request | limit |
+|---|---|---|---|
+| kustomize-controller | 29 MiB | 64 MiB | 1 GiB |
+| source-controller | 24 MiB | 64 MiB | 1 GiB |
+
+The node went from 3580 to 3619 MiB in use. Taking the objects over restarted three pods once:
+cluster-autoscaler, victoria-metrics and tenbox-server had a `kubectl.kubernetes.io/restartedAt`
+annotation in their pod template from an earlier `kubectl rollout restart`, which git does not
+have; no other pod changed, and a running task Job went on.
+
+A field changed by hand (the schedule of the CronJob `offsite-backup`) came back in 3 s with
+`flux reconcile kustomization apps`, and in 134 s on its own, at the next run of the layer.
