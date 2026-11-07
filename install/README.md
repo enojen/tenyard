@@ -8,7 +8,7 @@ them, so pods see 3 cores and about 6 GB.
 ## The cluster in git: Flux
 
 Every object of the cluster that lives in git has one kustomization per component under
-`install/`: `cluster` (every namespace and the LimitRange), `ccm`, `csi`, `autoscaler`,
+`install/`: `cluster` (every namespace, the LimitRange and the box egress policy), `ccm`, `csi`, `autoscaler`,
 `monitoring` (with Grafana and its tailnet node), `server` and `backup`. An upstream file (the
 CSI driver, the CCM) is kept as its release ships it, and every change to it is a patch next to
 it.

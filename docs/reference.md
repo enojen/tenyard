@@ -26,6 +26,13 @@ starts there in about 2 minutes instead of 20 s (`docs/numbers.md`); a worker wi
 goes after 50 minutes, counted from its last box, not from its billed hour (#33 changes that;
 `install/README.md`, "Workers").
 
+The box runs as `tenbox` (uid 1001), not root, with no privilege escalation, no capabilities
+and the runtime's default seccomp profile; the pod's `fsGroup` gives a new volume to its group.
+A pod of namespace `tenbox` reaches DNS and the internet only: the NetworkPolicy `box-egress`
+(`install/cluster/networkpolicy.yaml`) drops its traffic to the private ranges, the link-local
+range with the cloud metadata endpoint, and so to the cluster API, the nodes and other pods.
+Ingress is open, so the procs sidecar is still scraped.
+
 ### Resource classes
 
 `task/classes.yaml` names three classes; the agent picks one per Job (tenbox: `start` and
