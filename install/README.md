@@ -388,6 +388,59 @@ The bucket was made once, private, with its expiry rule (S3 `PUT /tenyard-backup
 container with no network: it prints the integrity check of both databases and a few counts.
 The first run, 2026-11-07: `k3s 726 KB, server 61 KB`, both `ok`.
 
+## Rebuild
+
+Two cases, both tried in the rehearsal of 2026-11-07 (`docs/numbers.md`, #69).
+
+**The control-plane server is lost, the project is not** (the workers, the volumes and the
+network are still there). A new server from `infra/` (`tofu apply` makes it again, at
+10.1.0.2), then the k3s datastore of the newest backup in place of the empty one, before k3s
+has written much:
+
+```
+systemctl stop k3s && /usr/local/bin/k3s-killall.sh
+mv /var/lib/rancher/k3s/server /root/server-empty
+mkdir -p /var/lib/rancher/k3s/server/db && chmod 700 /var/lib/rancher/k3s/server
+# from your computer, with the k3s file of a day from the bucket (as tools/check-backup.sh
+# downloads it) and the image tools/check-backup.sh builds:
+#   docker run --rm -i --network none -v ~/.config/tenyard/age.key:/key:ro tenyard-backup-check \
+#     age -d -i /key < k3s-<day>.tar.gz.age \
+#     | ssh root@<server> 'mkdir -p /root/restore && tar -xz -C /root/restore'
+cp /root/restore/state.db /var/lib/rancher/k3s/server/db/ && cp /root/restore/token /var/lib/rancher/k3s/server/
+systemctl start k3s
+```
+
+k3s logs `Reconciling bootstrap data between datastore and disk`: the token of the backup
+decrypts the certificates in the datastore, so the workers and kubectl trust the new server.
+The cluster is as it was at 03:30 of that day. In the rehearsal it came up in 10 s with every
+Secret, Deployment and volume claim. It ran there with `--disable-agent`, as its Secrets hold
+the token of this project: never start a copy of the datastore in another project with an
+agent, or its autoscaler and CSI driver act on this project.
+
+**The project is lost**: a new Hetzner project, built from git, the age key and the backups.
+13 minutes in the rehearsal:
+
+1. In the Hetzner console: the project, a read and write API token, and the SSH keys `tenzel`
+   (for `infra/`) and `main` (the autoscaler gives it to each worker, `HCLOUD_SSH_KEY`).
+2. `infra/`: a new state file and `tofu apply`. `location` picks another place when `hel1`
+   has no cx33 (`resource_unavailable`; in the rehearsal, hel1 and fsn1 had none, nbg1 did).
+   k3s is ready about 1 minute after the server.
+3. The kubeconfig: `/etc/rancher/k3s/k3s.yaml` of the server, with its public IP.
+4. `kubectl apply -k clusters/tenyard`.
+5. The Secrets: `secrets/kube-system/hcloud.sops.yaml` and `secrets/tenbox-server/hcloud.sops.yaml`
+   hold the token of the old project; put the new one in both with `sops` first, then
+   `tools/apply-secrets.sh`. The pods that wait for a Secret start by themselves; the CCM
+   then initializes the node and the CSI driver makes the volumes.
+6. `install/autoscaler/autoscaler.sh <server> 10.1.0.2`.
+7. `tools/restore-server.sh <day>`: the server's database from the backup.
+8. `install/check.sh`: the autoscaler starts a worker for it (2 minutes).
+9. The login sync of tenbox writes `claude-credentials` again
+   (`systemctl --user start tenbox-login-sync.service`, with the new kubeconfig); then a task
+   Job.
+
+On the server, the volume and node watches see the volumes and nodes of the old cluster gone
+and record `volume.removed` and `node.removed` for each, at the start.
+
 ## Check
 
 `install/check.sh` runs a pod that writes a file to a new volume, reads it back, reaches
