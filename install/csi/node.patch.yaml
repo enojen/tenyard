@@ -1,0 +1,14 @@
+# The node plugin as upstream ships it; only the reasons for kube-linter.
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: hcloud-csi-node
+  namespace: kube-system
+  annotations:
+    ignore-check.kube-linter.io/run-as-non-root: "the node plugin mounts volumes on the host, as upstream ships it"
+    ignore-check.kube-linter.io/no-read-only-root-fs: "the node plugin mounts volumes on the host, as upstream ships it"
+    ignore-check.kube-linter.io/privileged-container: "the node plugin mounts volumes on the host, as upstream ships it"
+    ignore-check.kube-linter.io/privilege-escalation-container: "the node plugin mounts volumes on the host, as upstream ships it"
+    ignore-check.kube-linter.io/sensitive-host-mounts: "the node plugin mounts volumes on the host, as upstream ships it"
+    ignore-check.kube-linter.io/unset-cpu-requirements: "as upstream ships it; the change is tried on the cluster first"
+    ignore-check.kube-linter.io/unset-memory-requirements: "as upstream ships it; the change is tried on the cluster first"

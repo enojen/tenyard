@@ -1,0 +1,4 @@
+# The namespace the agent Jobs and their volumes live in.
+apiVersion: v1
+kind: Namespace
+metadata: { name: tenbox }

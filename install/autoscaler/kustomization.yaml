@@ -1,0 +1,5 @@
+# The cluster autoscaler of the box pool. Its pool config and join token are the Secret
+# tenyard-autoscaler, which autoscaler.sh writes.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources: [autoscaler.yaml]

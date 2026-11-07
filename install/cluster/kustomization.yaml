@@ -1,0 +1,4 @@
+# The namespace of the boxes and the default resources of a container that names none.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources: [namespace.yaml, limitrange.yaml]

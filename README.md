@@ -14,8 +14,11 @@ box runs belongs to Tenyard. Tenyard never knows what an image does, only how to
 
 ## What is here today
 
+- `clusters/tenyard/`: every object of the cluster that lives in git, as one kustomization;
+  `kubectl diff -k clusters/tenyard` shows what differs from the cluster.
 - `install/`: how the cluster is set up, on one Hetzner server, with a rollback, and the
-  workers that the cluster autoscaler adds for the boxes and removes when they are idle.
+  workers that the cluster autoscaler adds for the boxes and removes when they are idle; one
+  kustomization per component.
 - `task/`: one agent run as a Job on the task's volume, with the Secrets it reads and the
   services its tests need.
 - `tools/`: the checks of every PR. `install.sh` downloads kubeconform, kube-linter and
@@ -92,7 +95,7 @@ The box logs that peak as its last line, `tenbox-boot: memory peak <MiB> MiB, cp
 `heavy` was 5Gi for a project's 4 GB test sweep; with its database moved to a Postgres service
 (below), that project's whole check chain peaks at about 2.3 GB, so `heavy` is 3Gi.
 
-`install/limitrange.yaml` gives a container that names no resources, such as a pod made by
+`install/cluster/limitrange.yaml` gives a container that names no resources, such as a pod made by
 hand on a task volume, the `plan` class, without a CPU limit too.
 
 ### Services

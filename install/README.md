@@ -5,6 +5,22 @@ first cluster lives on `tenbox-ci` (cx33, 4 vCPU, 8 GB, Ubuntu 24.04), next to t
 Actions runners and Docker that were already there. k3s reserves one core and 1.5 GiB for
 them, so pods see 3 cores and about 6 GB.
 
+## The cluster in git
+
+`clusters/tenyard/kustomization.yaml` holds every object of the cluster that lives in git, one
+kustomization per component under `install/`: `cluster` (the namespace `tenbox` and the
+LimitRange), `ccm`, `csi`, `autoscaler`, `monitoring` (with Grafana and its tailnet node) and
+`server`. An upstream file (the CSI driver, the CCM) is kept as its release ships it, and every
+change to it is a patch next to it. Secrets stay outside; the steps below name each one.
+
+```
+kubectl diff -k clusters/tenyard    # what an apply would change; nothing, when git and the cluster agree
+kubectl apply -k clusters/tenyard
+```
+
+Apply with no box running, after a snapshot. The steps below are how the cluster was built; each
+one applies its own component.
+
 ## Steps
 
 All commands run on the server as root, except where noted.
@@ -28,23 +44,21 @@ All commands run on the server as root, except where noted.
 
    `k3s kubectl get nodes` shows the node Ready after about 20 seconds.
 
-3. Install the Hetzner CSI driver, so a PersistentVolumeClaim becomes a Hetzner volume.
-   It needs a Hetzner API token in a Secret; pipe it in, do not put it on the command line:
+3. The Hetzner CSI driver (step 8) makes a PersistentVolumeClaim a Hetzner volume. It needs a
+   Hetzner API token in a Secret; pipe it in, do not put it on the command line:
 
    ```
    cat hcloud-token | k3s kubectl -n kube-system create secret generic hcloud --from-file=token=/dev/stdin
-   k3s kubectl apply -f https://raw.githubusercontent.com/hetznercloud/csi-driver/v2.24.0/deploy/kubernetes/hcloud-csi.yml
    ```
 
-4. Make `hcloud-volumes` the default StorageClass and take the default away from
-   `local-path`:
+4. Take the default StorageClass away from `local-path`, so `hcloud-volumes` of the CSI driver
+   is the only default:
 
    ```
    k3s kubectl patch storageclass local-path -p '{"metadata":{"annotations":{"storageclass.kubernetes.io/is-default-class":"false"}}}'
-   k3s kubectl patch storageclass hcloud-volumes -p '{"metadata":{"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
    ```
 
-5. Create the namespace the agents run in:
+5. Create the namespace the agents run in (`install/cluster` has it too, so step 8 keeps it):
 
    ```
    k3s kubectl create namespace tenbox
@@ -71,11 +85,13 @@ All commands run on the server as root, except where noted.
    binary of the cluster's version from `https://dl.k8s.io/release/<version>/bin/<os>/<arch>/kubectl`
    into `~/.local/bin`.
 
-8. Give a container without resources the `plan` class (`task/classes.yaml`), from your
-   computer:
+8. From your computer: the namespace and a LimitRange that gives a container without resources
+   the `plan` class (`task/classes.yaml`), then the CSI driver v2.24.0:
 
    ```
-   KUBECONFIG=~/.kube/tenyard.yaml kubectl apply -f install/limitrange.yaml
+   export KUBECONFIG=~/.kube/tenyard.yaml
+   kubectl apply -k install/cluster
+   kubectl apply -k install/csi
    ```
 
 ## Workers
@@ -118,7 +134,7 @@ From your computer, once, on a server set up with the steps above:
     for pv in $(kubectl get pv -o name); do
       kubectl patch "$pv" -p '{"spec":{"persistentVolumeReclaimPolicy":"Retain"}}'
     done
-    kubectl -n kube-system patch deployment hcloud-csi-controller --patch-file install/csi-controller.patch.yaml
+    kubectl apply -k install/csi   # controller.patch.yaml: the CSI controller tolerates the control plane
     ```
 
 11. With no box running, on the server: add the network name to the `hcloud` Secret, write
@@ -143,7 +159,7 @@ From your computer, once, on a server set up with the steps above:
     `InternalIP` and the public `ExternalIP`, and removes the `uninitialized` taint:
 
     ```
-    kubectl apply -f install/ccm/ccm.yaml
+    kubectl apply -k install/ccm
     kubectl get nodes -o custom-columns=NAME:.metadata.name,ID:.spec.providerID
     kubectl taint node <server> node-role.kubernetes.io/control-plane:NoSchedule
     ```
@@ -312,8 +328,8 @@ hcloud server rebuild --image <snapshot id> <server>
 | | |
 |---|---|
 | k3s | v1.36.5+k3s1 (stable channel, 2026-10-21) |
-| Hetzner CSI driver | v2.24.0 |
-| Hetzner cloud-controller-manager | v1.39.2 |
+| Hetzner CSI driver | v2.24.0, `install/csi/hcloud-csi.yml` |
+| Hetzner cloud-controller-manager | v1.39.2, `install/ccm/ccm-networks.yaml` |
 | cluster-autoscaler | v1.36.1 |
 | VictoriaMetrics single node | v1.154.1 |
 | kube-state-metrics | v2.20.0 |
