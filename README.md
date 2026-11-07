@@ -2,7 +2,7 @@
 
 Tenbox is the box. Tenyard is the yard it runs in.
 
-Tenyard is a small Kubernetes runtime for coding agents: one Job and one volume per
+Tenyard is a small Kubernetes-native runtime for coding agents: one Job and one volume per
 task, low CPU requests and no CPU limit so that several agents share a node and still burst,
 and nothing running when no task runs. It is built on k3s on Hetzner, from plain
 manifests. [Tenbox](https://github.com/enojen/tenbox) is its first client; any agent that
