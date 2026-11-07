@@ -36,18 +36,18 @@ behind this are in `docs/numbers.md` once they are measured.
 One agent run is one Job: the box image, one tenbox command, the task's volume on
 `/home/tenbox`, the secrets as env. The volume outlives the pod, so the next run of the task
 continues from it; the pod ends when the command and the claude session it left behind are
-done. `task/run.sh <task> "<command>"` applies the volume (`task/pvc.yaml`, kept when it
-exists) and the Job (`task/job.yaml`), then follows the log until the pod ends:
+done. The agent fills the `__X__` fields of `task/pvc.yaml` and `task/job.yaml` and posts
+both to the cluster API; the volume is kept when it exists. Tenbox does it with
+`tenbox machine run` (tenbox `docs/reference.md`, "Machines"):
 
 ```
-KUBECONFIG=~/.kube/tenyard.yaml task/run.sh TEN-451 "tenbox start TEN-451"
-PROJECT=demo REPO=https://github.com/me/demo.git task/run.sh DEMO-1 "tenbox build DEMO-1"
+tenbox machine run TEN-451 -- tenbox start TEN-451
+tenbox machine logs TEN-451 --follow
 ```
 
-`PROJECT`, `REPO`, `IMAGE` (`ghcr.io/enojen/tenbox-box:latest`), `CLASS` (`build`),
-`SERVICES` (none) and `NAMESPACE` (`tenbox`) are env. The Job is `task-<task>-<time>` with the labels `app: tenyard, task: <task>`; a task
-has one run at a time (its volume mounts on one pod), so `run.sh` refuses while a Job of the
-task is active. The Job runs at most 8 hours, never retries, gets 60 seconds to stop, and is
+The Job is `task-<task>-<time>` with the labels `app: tenyard, task: <task>`; a task has one
+run at a time (its volume mounts on one pod), so the agent refuses while a Job of the task is
+active. The Job runs at most 8 hours, never retries, gets 60 seconds to stop, and is
 deleted 10 minutes after it ends. Its CPU and RAM come from a resource class (below). No box
 runs on the server: a Job that fits on no worker makes the autoscaler add one, and the box
 starts there in about 2 minutes instead of 20 s (`docs/numbers.md`); a worker with no box
@@ -96,8 +96,8 @@ A project whose tests need a database gets it as a service: a sidecar container 
 its Job, reached on `127.0.0.1`. A pod has no docker, but it can hold more containers. Each file
 in `task/services/` is one service, written as a strategic merge patch of the Job: the sidecar,
 its volumes and the env of the `box` container. The agent picks the services per Job (tenbox:
-`machine.services` of the project's `tenbox.yaml`, on `build` only); `run.sh` takes them as
-`SERVICES="postgres"` and applies each file with `kubectl patch --local`.
+`machine.services` of the project's `tenbox.yaml`, on `build` only) and adds each file as
+`kubectl patch --type strategic` does: an entry replaces the one of its name.
 
 | service | what | box env |
 |---|---|---|

@@ -1,5 +1,5 @@
-# The resource classes of a box (README, "Resource classes"). One line per class: run.sh reads
-# them with sed.
+# The resource classes of a box (README, "Resource classes"). The agent reads the class of each
+# Job here.
 plan: { cpu: 250m, memory: 1536Mi }
 build: { cpu: 500m, memory: 2Gi }
 heavy: { cpu: 500m, memory: 3Gi }
