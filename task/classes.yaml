@@ -1,4 +1,4 @@
-# The resource classes of a box (README, "Resource classes"). The agent reads the class of each
+# The resource classes of a box (docs/reference.md, "Resource classes"). The agent reads the class of each
 # Job here.
 plan: { cpu: 250m, memory: 1536Mi }
 build: { cpu: 500m, memory: 2Gi }

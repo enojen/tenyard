@@ -4,8 +4,8 @@
 # tenyard-net address and finds the private interface by it, as its name differs between server
 # types. --tls-san adds the public IP to the API certificate, so kubectl works from your
 # computer. The kubelet keeps one core and 1.5 GiB for the GitHub runners on the server. The
-# CCM sets the providerID; the taint keeps the boxes on the workers. After k3s: the Secrets and
-# `kubectl apply -k clusters/tenyard` (install/README.md).
+# CCM sets the providerID; the taint keeps the boxes on the workers. After k3s: Flux and its age
+# key (install/README.md, "The cluster in git: Flux").
 runcmd:
   - until ip -4 -o addr | grep -q 'inet 10\.1\.0\.2/'; do sleep 1; done
   - >-
