@@ -1,0 +1,6 @@
+# Every Secret in secrets/ is encrypted to the age key of Tenyard (install/README.md, "Secrets").
+# Only data and stringData are encrypted; the name, the namespace and the type stay readable.
+creation_rules:
+  - path_regex: secrets/[a-z0-9-]+/[a-z0-9.-]+\.sops\.yaml$
+    encrypted_regex: ^(data|stringData)$
+    age: age1y5ghz0eu2vuxxwe9njucus27sh9u8sv4ujvn6u8rxxtaecc8avwsllhe5y
