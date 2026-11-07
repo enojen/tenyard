@@ -5,11 +5,7 @@
 # The server account reads nodes, and pods, their logs and Jobs of namespace tenbox: what it
 # watches to record workers and machine runs. It reads no Secret.
 # For each new worker the server asks Hetzner for its type and price with a read-only API
-# token: Secret `hcloud` in namespace tenbox-server, made by hand (install/README.md "Server").
-apiVersion: v1
-kind: Namespace
-metadata: { name: tenbox-server }
----
+# token: Secret `hcloud` in namespace tenbox-server (secrets/). Its namespace is in install/cluster.
 apiVersion: v1
 kind: ServiceAccount
 metadata: { name: tenbox-server, namespace: tenbox-server }

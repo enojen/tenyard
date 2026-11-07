@@ -1,0 +1,4 @@
+# Flux layer `infrastructure` (layers.yaml): what the nodes and the volumes need.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources: [../../../install/ccm, ../../../install/csi, ../../../install/autoscaler]

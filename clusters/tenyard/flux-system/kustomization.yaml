@@ -1,0 +1,20 @@
+# Flux itself: its source and kustomize controllers (gotk-components.yaml, from
+# `flux install --export --components=source-controller,kustomize-controller --network-policy=true`,
+# never edited by hand) and what it syncs (gotk-sync.yaml): main of this repo, every minute.
+# The patch keeps the controllers on the control-plane server: on a worker they would hold it up
+# when the autoscaler wants it gone.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources: [gotk-components.yaml, gotk-sync.yaml]
+patches:
+  - target: { kind: Deployment, namespace: flux-system }
+    patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata: { name: any }
+      spec:
+        template:
+          spec:
+            nodeSelector: { node-role.kubernetes.io/control-plane: "true" }
+            tolerations:
+              - { key: node-role.kubernetes.io/control-plane, operator: Exists, effect: NoSchedule }
