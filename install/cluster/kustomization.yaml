@@ -1,4 +1,5 @@
-# Every namespace, and the default resources of a container in tenbox that names none.
+# Every namespace, the default resources of a container in tenbox that names none, and the
+# egress rule of the boxes.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-resources: [namespace.yaml, limitrange.yaml]
+resources: [namespace.yaml, limitrange.yaml, networkpolicy.yaml]
