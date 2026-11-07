@@ -97,6 +97,9 @@ kind: Deployment
 metadata:
   name: hcloud-cloud-controller-manager
   namespace: kube-system
+  annotations:
+    ignore-check.kube-linter.io/host-network: "the CCM sets up the nodes before the pod network is there"
+    ignore-check.kube-linter.io/unset-memory-requirements: "as upstream ships it; the change is tried on the cluster first"
 spec:
   replicas: 1
   revisionHistoryLimit: 2

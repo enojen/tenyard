@@ -106,7 +106,12 @@ spec:
 ---
 apiVersion: apps/v1
 kind: Deployment
-metadata: { name: victoria-metrics, namespace: monitoring }
+metadata:
+  name: victoria-metrics
+  namespace: monitoring
+  annotations:
+    ignore-check.kube-linter.io/run-as-non-root: "runs as its image's user; the change is tried on the cluster first"
+    ignore-check.kube-linter.io/no-read-only-root-fs: "writes to its root file system; the change is tried on the cluster first"
 spec:
   replicas: 1
   strategy: { type: Recreate }
@@ -167,7 +172,12 @@ subjects: [{ kind: ServiceAccount, name: kube-state-metrics, namespace: monitori
 ---
 apiVersion: apps/v1
 kind: Deployment
-metadata: { name: kube-state-metrics, namespace: monitoring }
+metadata:
+  name: kube-state-metrics
+  namespace: monitoring
+  annotations:
+    ignore-check.kube-linter.io/run-as-non-root: "runs as its image's user; the change is tried on the cluster first"
+    ignore-check.kube-linter.io/no-read-only-root-fs: "writes to its root file system; the change is tried on the cluster first"
 spec:
   replicas: 1
   selector: { matchLabels: { app: kube-state-metrics } }
