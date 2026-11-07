@@ -19,7 +19,6 @@ spec:
     spec:
       restartPolicy: Never
       automountServiceAccountToken: false
-      # The box runs as tenbox (uid 1001 in the image); a new volume goes to its group.
       securityContext: { fsGroup: 1001, fsGroupChangePolicy: OnRootMismatch }
       terminationGracePeriodSeconds: 60
       imagePullSecrets: [{ name: ghcr }]
