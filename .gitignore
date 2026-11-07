@@ -2,3 +2,7 @@ node_modules/
 tenbox.local.yaml
 procs/target/
 .tools/
+# secrets/ takes only <namespace>/<name>.sops.yaml files: a plain Secret there needs `git add -f`.
+secrets/**
+!secrets/*/
+!secrets/*/*.sops.yaml

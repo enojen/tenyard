@@ -19,3 +19,5 @@ jobs:
         run: tools/check-manifests.sh
       - name: Scripts
         run: tools/check-scripts.sh
+      - name: Secrets
+        run: tools/check-secrets.sh

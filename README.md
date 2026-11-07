@@ -21,11 +21,15 @@ box runs belongs to Tenyard. Tenyard never knows what an image does, only how to
   kustomization per component.
 - `task/`: one agent run as a Job on the task's volume, with the Secrets it reads and the
   services its tests need.
-- `tools/`: the checks of every PR. `install.sh` downloads kubeconform, kube-linter and
-  shellcheck, pinned by version and sha256, into `.tools/bin`; `check-manifests.sh` validates
-  every manifest against the API of the cluster's version and lints it, `check-scripts.sh` runs
-  shellcheck. An object that breaks a kube-linter check on purpose says why in an
-  `ignore-check.kube-linter.io/<check>` annotation.
+- `tools/`: the checks of every PR and the tools of the Secrets. `install.sh` downloads
+  kustomize, kubeconform, kube-linter, shellcheck and sops, pinned by version and sha256, into
+  `.tools/bin`. `check-manifests.sh` validates every manifest against the API of the cluster's
+  version and lints it; an object that breaks a kube-linter check on purpose says why in an
+  `ignore-check.kube-linter.io/<check>` annotation. `check-scripts.sh` runs shellcheck.
+  `check-secrets.sh` fails on a Secret that is not encrypted; `apply-secrets.sh` decrypts and
+  applies the ones in `secrets/`.
+- `secrets/`: the Secrets of the cluster, encrypted with SOPS to the age key of Tenyard
+  (`install/README.md`, "Secrets"); `docs/tokens.md` lists every token.
 
 Everything else (snapshots, the queue, the preview URLs, the resize controller) comes step by
 step; the README grows with the code.

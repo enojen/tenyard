@@ -21,6 +21,34 @@ kubectl apply -k clusters/tenyard
 Apply with no box running, after a snapshot. The steps below are how the cluster was built; each
 one applies its own component.
 
+## Secrets
+
+The Secrets live in `secrets/<namespace>/<name>.sops.yaml`, encrypted with SOPS to the age key
+of Tenyard; only `data` and `stringData` are encrypted (`.sops.yaml`). `docs/tokens.md` lists
+every token, and which ones stay out of git. The key is `~/.config/tenyard/age.key` on the
+computer, with a copy in a password manager; without it nothing in `secrets/` can be read again.
+It is not the key of any other project.
+
+```
+export SOPS_AGE_KEY_FILE=~/.config/tenyard/age.key
+.tools/bin/sops secrets/<namespace>/<name>.sops.yaml   # make or change one in $EDITOR
+tools/apply-secrets.sh --diff                          # what would change, values hidden
+tools/apply-secrets.sh
+```
+
+A Secret that is already on the cluster goes to git with:
+
+```
+kubectl -n <namespace> get secret <name> -o json \
+  | jq '{apiVersion, kind, type, data, metadata: {name: .metadata.name, namespace: .metadata.namespace}}' \
+  | .tools/bin/sops --encrypt --input-type json --output-type yaml \
+      --filename-override secrets/<namespace>/<name>.sops.yaml /dev/stdin \
+  > secrets/<namespace>/<name>.sops.yaml
+```
+
+`.gitignore` keeps any other file in `secrets/` out of git, and `tools/check-secrets.sh` fails on
+a file there that sops did not encrypt and on a Secret with values in `clusters/tenyard`.
+
 ## Steps
 
 All commands run on the server as root, except where noted.
