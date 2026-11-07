@@ -126,3 +126,30 @@ tenbox-demo with the box image (`task/run.sh DEMO-1 ls`, `task/measure.sh`), 202
 | 22:42:27 | `build` | the same, warm | +0 s | +16 s | 0.9 s | +19 s |
 
 A box on a new worker is ready in about 2 minutes, on a warm one in 20 s as before.
+
+## A rebuild rehearsal (#69)
+
+A new Hetzner project, `tenyard-rehearsal`, built from git, the age key and the backups of
+2026-11-07 (install/README.md, "Rebuild"), then deleted. 2026-11-07, UTC:
+
+| step | time |
+|---|---|
+| `tofu apply`: network, subnet, firewalls | 16:05:45 |
+| cx33 in hel1, then fsn1: `resource_unavailable`; `location = "nbg1"` | 16:06:36 |
+| k3s Ready (cloud-init of `infra/control-plane.yaml`, first run) | 16:07:39 |
+| `kubectl apply -k clusters/tenyard`, then the Secrets | 16:08:22 – 16:08:46 |
+| every pod Running but the autoscaler; two volumes made and bound | 16:09:49 |
+| `autoscaler.sh` | 16:10:09 |
+| `tools/restore-server.sh 2026-11-07` | 16:10:56 – 16:12:04 |
+| `install/check.sh` passes; a cpx32 worker in hel1 started for it | 16:12:49 – 16:14:56 |
+| a task Job of tenbox-demo (`tenbox status DEMO-R1`): box ready | 16:15:43 – 16:16:23 |
+| the k3s datastore of the backup, on the server, `--disable-agent`: API ready | 16:18:12 |
+| every resource of the project deleted | 16:18:55 |
+
+13 minutes from nothing to a task Job. The restored server database held the 285 events of
+the backup; the server then recorded the old cluster's 2 nodes and 22 volumes as removed, and
+the rehearsal's worker, volume and Job as new. The restored k3s datastore held 19 Secrets,
+11 Deployments and 25 volume claims.
+
+Cost, every started hour billed: cx33 €0.0136, cpx32 €0.0569, four 10 GB volumes and one IPv4
+for an hour, about €0.08 in all.

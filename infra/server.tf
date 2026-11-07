@@ -6,7 +6,7 @@
 resource "hcloud_server" "control_plane" {
   name         = "tenbox-ci"
   server_type  = "cx33"
-  location     = "hel1"
+  location     = var.location
   image        = "ubuntu-24.04"
   ssh_keys     = var.ssh_keys
   firewall_ids = [hcloud_firewall.control_plane.id]
