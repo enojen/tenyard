@@ -101,16 +101,16 @@ A sidecar is a native one, an init container with `restartPolicy: Always`: the b
 after its startup probe passes, and the Job ends when the box ends. Its RAM is its own, on top of
 the class of the box; data in an `emptyDir` with `medium: Memory` counts in that RAM.
 
-The Job reads four Secrets in the namespace. The first two are in `secrets/tenbox/`, applied by
-Flux; the agent's login sync writes the third, and the agent writes the project Secret before
-each Job (tenbox: `tenbox machine run`):
+The Job reads four Secrets in the namespace. The first is in `secrets/tenbox/`, applied by
+Flux; the tenbox server writes the run token for each Job, the agent's login sync writes the
+login, and the agent writes the project Secret before each Job (tenbox: `tenbox machine run`):
 
 | Secret | Key | What |
 |---|---|---|
 | `ghcr` | `.dockerconfigjson` | pull secret of the private image (a GitHub token with `read:packages`) |
-| `github-token` | `token` | `gh` and `git push` in the box: a fine-grained token for the box repos only (`docs/tokens.md`) |
+| `task-<name>-<run>-github` | `token` | the run token: a GitHub App token for the repository of the Job's project only (contents, pull requests and issues write), one hour long; empty when the App is not installed there. The pod waits until the server writes it; the Job owns it, so it goes with the Job. The Job carries the label `project-id` for it |
 | `claude-credentials` | `credentials.json` | the claude.ai login, `~/.claude/.credentials.json` |
-| `project-<project id>` | `tracker_api_key`, `ntfy_url`, `github_token` | the project's tracker key, notification topic and own GitHub token (all optional; the box prefers `github_token` over `github-token`) |
+| `project-<project id>` | `tracker_api_key`, `ntfy_url`, `github_token` | the project's tracker key, notification topic and own GitHub token (all optional; the box prefers `github_token` over the run token) |
 
 What the box does with them is the image's business (tenbox `machines/k8s/boot.sh`).
 

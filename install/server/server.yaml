@@ -3,7 +3,7 @@
 # kept with Retain; a CronJob writes a copy of it once a day to the same volume and keeps 7 days.
 # The Service is reachable inside the cluster only: tokens travel over plain HTTP until TLS.
 # The server account reads nodes, and pods, their logs and Jobs of namespace tenbox: what it
-# watches to record workers and machine runs. It reads no Secret.
+# watches to record workers and machine runs. It creates the run token Secrets and reads none.
 # For each new worker the server asks Hetzner for its type and price with a read-only API
 # token: Secret `hcloud` in namespace tenbox-server (secrets/). Its namespace is in install/cluster.
 apiVersion: v1
@@ -44,6 +44,9 @@ rules:
   - apiGroups: [""]
     resources: [persistentvolumeclaims]
     verbs: [get, list, delete]
+  - apiGroups: [""]
+    resources: [secrets]
+    verbs: [create]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -92,12 +95,18 @@ spec:
             # Where the idle volume notices go (enojen/tenbox#212); without the Secret, no notice.
             - name: TENBOX_SERVER_NTFY
               valueFrom: { secretKeyRef: { name: ntfy, key: url, optional: true } }
+            - { name: TENBOX_SERVER_GITHUB_APP_ID, value: "5669876" }
+            - { name: TENBOX_SERVER_GITHUB_APP_KEY_FILE, value: /github-app/key.pem }
           resources:
             requests: { cpu: 50m, memory: 128Mi }
             limits: { memory: 512Mi }
           readinessProbe: { httpGet: { path: /health, port: http } }
-          volumeMounts: [{ name: data, mountPath: /data }]
-      volumes: [{ name: data, persistentVolumeClaim: { claimName: tenbox-server } }]
+          volumeMounts:
+            - { name: data, mountPath: /data }
+            - { name: github-app, mountPath: /github-app, readOnly: true }
+      volumes:
+        - { name: data, persistentVolumeClaim: { claimName: tenbox-server } }
+        - { name: github-app, secret: { secretName: github-app, defaultMode: 0440 } }
 ---
 apiVersion: v1
 kind: Service

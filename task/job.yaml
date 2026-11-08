@@ -5,7 +5,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: task-__NAME__-__RUN__
-  labels: { app: tenyard, task: "__TASK__", project: "__PROJECT__", command: "__COMMAND__" }
+  labels: { app: tenyard, task: "__TASK__", project: "__PROJECT__", project-id: "__PROJECT_ID__", command: "__COMMAND__" }
 spec:
   backoffLimit: 0
   # One run is one tenbox command and the session it leaves behind; 8 hours is a long one.
@@ -60,6 +60,8 @@ spec:
             - { name: TENBOX_PROJECT, value: "__PROJECT__" }
             - { name: TENBOX_REPO, value: "__REPO__" }
             - { name: TENBOX_BASE, value: "__BASE__" }
+            - { name: TENBOX_GIT_NAME, value: "__GIT_NAME__" }
+            - { name: TENBOX_GIT_EMAIL, value: "__GIT_EMAIL__" }
             - name: TENBOX_CMD
               value: |-
                 __CMD__
@@ -67,7 +69,7 @@ spec:
               value: |-
                 __ENV__
             - name: GITHUB_TOKEN
-              valueFrom: { secretKeyRef: { name: github-token, key: token } }
+              valueFrom: { secretKeyRef: { name: task-__NAME__-__RUN__-github, key: token } }
             # A project's own token (tenbox#162); the box prefers it over GITHUB_TOKEN.
             - name: PROJECT_GITHUB_TOKEN
               valueFrom: { secretKeyRef: { name: project-__PROJECT_ID__, key: github_token, optional: true } }
