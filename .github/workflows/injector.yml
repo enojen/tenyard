@@ -1,0 +1,39 @@
+name: injector
+on:
+  push:
+    paths: [injector/**, .github/workflows/injector.yml]
+  pull_request:
+    paths: [injector/**, .github/workflows/injector.yml]
+concurrency:
+  group: injector-${{ github.ref }}
+jobs:
+  injector:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+    env:
+      IMAGE: ghcr.io/enojen/tenyard-injector
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check
+        run: docker build --target check injector
+      - name: Build
+        run: docker build injector -t "$IMAGE:$GITHUB_SHA"
+      - name: Log in to GHCR
+        if: github.event_name == 'push'
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+      - name: Push
+        if: github.event_name == 'push'
+        run: |
+          docker push "$IMAGE:$GITHUB_SHA"
+          if [ "$GITHUB_REF_NAME" = main ]; then
+            docker tag "$IMAGE:$GITHUB_SHA" "$IMAGE:latest"
+            docker push "$IMAGE:latest"
+          fi
+      - name: Log out of GHCR
+        if: always() && github.event_name == 'push'
+        run: docker logout ghcr.io
