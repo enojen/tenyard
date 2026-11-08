@@ -1,4 +1,4 @@
 # Flux layer `apps` (layers.yaml): what runs on the cluster once it has nodes and volumes.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-resources: [../../../install/monitoring, ../../../install/server, ../../../install/backup]
+resources: [../../../install/monitoring, ../../../install/egress, ../../../install/server, ../../../install/backup]

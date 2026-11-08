@@ -36,6 +36,18 @@ workers' kubelet, `install/autoscaler/worker-cloud-init.yaml`), and the box at m
 node's disk outside its volume (`ephemeral-storage`, request 256Mi): past it the kubelet evicts
 the pod (`docs/numbers.md`, "PIDs and local disk of a box").
 
+The box goes out through the egress proxy, Squid in namespace `egress` (`install/egress`): the
+Job sets `HTTPS_PROXY`, `HTTP_PROXY`, `NO_PROXY` (localhost, for the services of a test),
+`NODE_USE_ENV_PROXY` (Node's own `fetch` reads no proxy without it), `DISABLE_TELEMETRY` and
+`DISABLE_ERROR_REPORTING` (no claude telemetry out of the box;
+`CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` would also turn off Remote Control), and boot.sh passes
+them to the run. The proxy lets every request out today, except to the private ranges
+and to ports other than 80 and 443, and writes one JSON line per request to VictoriaLogs
+(`stream:egress`): time, the box's pod IP, method, host, port, status, Squid's result, bytes each
+way and duration. An HTTPS request shows its host and port only; the proxy never opens TLS. Only
+pods of `tenbox` reach it. A box still has DNS and a direct way out; #90 closes both and keeps
+only the hosts the log shows.
+
 ### Resource classes
 
 `task/classes.yaml` names three classes; the agent picks one per Job (tenbox: `start` and

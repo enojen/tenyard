@@ -9,7 +9,7 @@ them, so pods see 3 cores and about 6 GB.
 
 Every object of the cluster that lives in git has one kustomization per component under
 `install/`: `cluster` (every namespace, the LimitRange and the box egress policy), `ccm`, `csi`, `autoscaler`,
-`monitoring` (with Grafana and its tailnet node), `server` and `backup`. An upstream file (the
+`monitoring` (with VictoriaLogs, Grafana and its tailnet node), `egress`, `server` and `backup`. An upstream file (the
 CSI driver, the CCM) is kept as its release ships it, and every change to it is a patch next to
 it.
 
@@ -349,6 +349,28 @@ kubectl apply -f install/monitoring/tailnet.yaml
 The key is used once: the node key then lives in Secret `tailscale-grafana`, and a tagged node
 does not expire. Delete `tailscale-auth` after the first start if you like.
 
+## Logs and the egress proxy
+
+VictoriaLogs single node keeps the request lines of the egress proxy for a year, at most 8 GiB, on
+its own 10 GB volume next to VictoriaMetrics (`install/monitoring/logs.yaml`). The proxy
+(`install/egress`) runs on the control-plane server, so it never keeps a worker up: Squid, and
+Fluent Bit that takes Squid's lines over TCP on the pod's loopback and posts them to VictoriaLogs.
+Both run as non-root users with a read-only root file system. A changed `squid.conf` gets a new
+ConfigMap name, so the pod is replaced: the new one starts first, and the old one leaves the
+Service 10 s before Squid stops, which gives open requests 30 s more (0 failed requests of 311
+during a restart, 75 of 271 without the wait). Squid holds 8192 open files, about 4000 tunnels,
+in 13 MiB.
+
+```
+kubectl patch pv "$(kubectl -n monitoring get pvc victoria-logs -o jsonpath='{.spec.volumeName}')" \
+  -p '{"spec":{"persistentVolumeReclaimPolicy":"Retain"}}'
+kubectl -n monitoring port-forward svc/victoria-logs 9428   # then http://localhost:9428/select/vmui
+```
+
+LogsQL in the UI: `stream:egress | stats by (host) count()` lists every host the boxes used,
+`stream:egress client:<pod IP>` one box's requests (`kubectl -n tenbox get pod -o wide` or
+`kube_pod_info` in VictoriaMetrics maps a pod IP to its task).
+
 ## Server
 
 The tenbox server (`server/` of enojen/tenbox, image `ghcr.io/enojen/tenbox-server`, private)
@@ -499,6 +521,9 @@ hcloud server rebuild --image <snapshot id> <server>
 | Hetzner cloud-controller-manager | v1.39.2, `install/ccm/ccm-networks.yaml` |
 | cluster-autoscaler | v1.36.1 |
 | VictoriaMetrics single node | v1.154.1 |
+| VictoriaLogs single node | v1.53.0 |
+| Squid (egress proxy) | 6.14, image `ubuntu/squid:6.6-24.04_edge` |
+| Fluent Bit (egress proxy) | 5.1.5 |
 | kube-state-metrics | v2.20.0 |
 | procs (box sidecar) | `procs/`, image by commit |
 | tenbox server | enojen/tenbox commit and digest, `install/server/server.yaml` |
