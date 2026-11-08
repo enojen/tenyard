@@ -74,6 +74,7 @@ the backups, are in [`install/README.md`](install/README.md), "Rebuild".
 | `install/` | one kustomization per component: CCM, CSI, autoscaler, monitoring, the egress proxy, Tetragon, the tenbox server, backups |
 | `secrets/` | the Secrets of the cluster, encrypted with SOPS |
 | `task/` | one run: the Job and volume templates, the resource classes, the services for tests |
+| `injector/` | the proxy behind Squid that writes a run's real GitHub and tracker credentials into its requests, in Rust ([`injector/README.md`](injector/README.md)) |
 | `procs/` | the sidecar that splits a box's CPU and RAM by process group, in Rust ([`procs/README.md`](procs/README.md)) |
 | `tools/` | the checks of every PR, the backup check and the restore |
 
