@@ -11,7 +11,6 @@ means a new token for every row marked "git".
 | `kube-system/hcloud` `network` | not a secret: the name of the private network | | git, with the token |
 | `tenbox-server/hcloud` `token` | Hetzner project, read only: the server reads each worker's type and price | Hetzner console | git |
 | `tenbox/ghcr`, `tenbox-server/ghcr` | pull the private images from GHCR (`read:packages` of a classic token) | GitHub, Settings, Developer settings, Personal access tokens (classic) | git |
-| `tenbox/github-token` `token` | nothing since the run tokens: no Job reads it; it goes once a DEMO run passes with them | GitHub, fine-grained tokens | git |
 | `tenbox-server/github-app` `key.pem` | the private key of the GitHub App `tenbox-enojen` (id 5669876): mints a one-hour token with contents, pull requests and issues write for any repository the App is installed on. The server gives each Job one for its project's repository only (`task-<name>-<run>-github`) | GitHub, Settings, Developer settings, GitHub Apps, tenbox-enojen, Private keys; revoke the old key there | git |
 | `tenbox/task-<name>-<run>-github` `token` | `gh` and `git push` of one run, in one repository, for one hour | the tenbox server, for each Job | the cluster only; goes with its Job |
 | `tenbox-server/ntfy` `url` | sends a notice to the ntfy topic | the topic name itself | git |
