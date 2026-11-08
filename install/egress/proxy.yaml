@@ -1,11 +1,8 @@
-# The egress proxy of the boxes: Squid, with Fluent Bit next to it sending each request line to
-# VictoriaLogs. On the control-plane server, so it never keeps a worker up.
 apiVersion: apps/v1
 kind: Deployment
 metadata: { name: proxy, namespace: egress }
 spec:
   replicas: 1
-  # A new config starts the new pod before the old one stops: the boxes never lose the way out.
   strategy: { type: RollingUpdate, rollingUpdate: { maxUnavailable: 0, maxSurge: 1 } }
   selector: { matchLabels: { app: proxy } }
   template:
@@ -32,8 +29,6 @@ spec:
             requests: { cpu: 50m, memory: 64Mi }
             limits: { memory: 256Mi }
           readinessProbe: { tcpSocket: { port: proxy }, periodSeconds: 2 }
-          # The Service drops the old pod first, then Squid stops taking new requests and gives the
-          # open ones 30 s (squid.conf).
           lifecycle: { preStop: { sleep: { seconds: 10 } } }
           volumeMounts:
             - { name: config, mountPath: /config, readOnly: true }
@@ -64,8 +59,6 @@ spec:
   selector: { app: proxy }
   ports: [{ port: 3128, targetPort: proxy, name: proxy }]
 ---
-# Only the boxes reach the proxy. The proxy reaches DNS, VictoriaLogs and the internet; its own
-# rule drops the private ranges too (squid.conf), so it is no way around box-egress.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata: { name: proxy, namespace: egress }

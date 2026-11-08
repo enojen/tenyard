@@ -1,4 +1,3 @@
-# VictoriaLogs single node: the log lines of the egress proxy, a year long.
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata: { name: victoria-logs, namespace: monitoring }
