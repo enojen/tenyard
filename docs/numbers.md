@@ -200,3 +200,31 @@ to 300. Decision: 2048 PIDs per pod, about 4 times the worst case seen (~240 in 
 A pod that wrote 1 GiB to `/tmp` with an `ephemeral-storage` limit of 512Mi was evicted ("Pod
 ephemeral local storage usage exceeds the total limit of containers 512Mi."); the same pod
 with no limit went on. boot.sh logs `pids peak` next to `memory peak` from tenbox#223 on.
+
+## Tetragon on a worker (#94)
+
+Source: 2026-11-08. A test install of `install/tetragon` in its own namespace, one task of the
+demo project (start, approve, build) on a new cpx32 worker, test pods that write a watched file
+every 20 ms from their first instruction, VictoriaMetrics (cAdvisor) and VictoriaLogs.
+
+| | value |
+|---|---|
+| agent CPU during a plan and a build | 2–11m |
+| agent memory, the 2 policies of git | ~99 MiB |
+| agent memory, 6 policies | 221–241 MiB |
+| Fluent Bit | 8–11 MiB, 0–4m |
+| runtime hook | 36 MiB, 0–1m |
+| events of the three runs (start, approve, build of one small task) | 602, 133, 629 |
+| connections of the three runs to anything but the egress proxy | 0 |
+| one event in VictoriaLogs | ~100 B on disk (~4.7 KB as JSON) |
+| new worker: node, agent started, agent ready, first container of the box pod, box container | 0, +8 s, +28 s, +34 s, +49 s |
+| writes a namespaced policy missed after a container start, no hook (4 pods) | 1–2 of 100, the first 22–45 ms |
+| the same with the hook (8 pods) | 0 |
+| pod create to first exec, no hook / hook | 2033–2083 / 2010–2233 ms |
+| open and close of a file, on a computer: no policy / the file policy cluster-wide | 2.35 / 5.45 µs |
+
+The agent was killed once at its 512Mi limit, only while unfiltered `tetra getevents` streams
+were open; with the same tests read from VictoriaLogs it stayed flat. With the hook failing
+closed, a pod of `tenbox` started while the agent was gone got `StartError` and stayed so; with
+`tenbox` in `failAllowNamespaces` it started. A cluster-wide file policy instead of the hook would
+also close the gap, at about 3 µs on every open of every process of the node.

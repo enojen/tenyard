@@ -1,0 +1,10 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources: [tetragon.yaml, policies.yaml]
+patches:
+  - path: daemonset.patch.yaml
+  - path: rthooks.patch.yaml
+configMapGenerator:
+  - name: tetragon-fluent-bit
+    namespace: tetragon
+    files: [fluent-bit.conf, parsers.conf]

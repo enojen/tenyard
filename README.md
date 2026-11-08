@@ -71,7 +71,7 @@ the backups, are in [`install/README.md`](install/README.md), "Rebuild".
 |---|---|
 | `infra/` | the Hetzner side in OpenTofu: network, firewalls, the control-plane server |
 | `clusters/tenyard/` | what Flux applies: Flux itself and four layers, `cluster`, `secrets`, `infrastructure`, `apps` |
-| `install/` | one kustomization per component: CCM, CSI, autoscaler, monitoring, the egress proxy, the tenbox server, backups |
+| `install/` | one kustomization per component: CCM, CSI, autoscaler, monitoring, the egress proxy, Tetragon, the tenbox server, backups |
 | `secrets/` | the Secrets of the cluster, encrypted with SOPS |
 | `task/` | one run: the Job and volume templates, the resource classes, the services for tests |
 | `procs/` | the sidecar that splits a box's CPU and RAM by process group, in Rust ([`procs/README.md`](procs/README.md)) |

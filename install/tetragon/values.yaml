@@ -1,0 +1,25 @@
+tolerations: []
+hostNetwork: false
+dnsPolicy: ClusterFirst
+tetragon:
+  image:
+    override: quay.io/cilium/tetragon:v1.8.0@sha256:5ed9088a1582131d71b06c98e0d549a37a71ae63ab13aabefc7a47553c822a9d
+  exportAllowList: |-
+    {"event_set":["PROCESS_EXEC", "PROCESS_EXIT", "PROCESS_KPROBE"], "namespace":["tenbox"]}
+  exportDenyList: ""
+  prometheus:
+    enabled: false
+  healthGrpc:
+    enabled: true
+tetragonOperator:
+  enabled: false
+crds:
+  installMethod: helm
+export:
+  mode: ""
+rthooks:
+  enabled: true
+  interface: nri-hook
+  failAllowNamespaces: tenbox,kube-system,monitoring,egress,tenbox-server,flux-system
+  image:
+    override: quay.io/cilium/tetragon-rthooks:v0.9@sha256:e3e0ebaa9cbe4ac9c10f86ba59f0b3ceee7c48e0ca842bf867617cc6f59760e9

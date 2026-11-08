@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: tetragon-rthooks
+  namespace: tetragon
+  annotations:
+    ignore-check.kube-linter.io/run-as-non-root: "the setup writes the hook to /opt/tetragon of the node and talks to the NRI socket, as upstream ships it"
+    ignore-check.kube-linter.io/no-read-only-root-fs: "as upstream ships it"
+    ignore-check.kube-linter.io/sensitive-host-mounts: "the hook binary on the node and the NRI socket of containerd"
+spec:
+  template:
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: tetragon-rthooks
+          resources:
+            requests: { cpu: 10m, memory: 32Mi }
+            limits: { memory: 96Mi }
+        - name: export-logs
+          resources:
+            requests: { cpu: 5m, memory: 8Mi }
+            limits: { memory: 32Mi }

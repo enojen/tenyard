@@ -9,8 +9,8 @@ them, so pods see 3 cores and about 6 GB.
 
 Every object of the cluster that lives in git has one kustomization per component under
 `install/`: `cluster` (every namespace, the LimitRange and the box egress policy), `ccm`, `csi`, `autoscaler`,
-`monitoring` (with VictoriaLogs, Grafana and its tailnet node), `egress`, `server` and `backup`. An upstream file (the
-CSI driver, the CCM) is kept as its release ships it, and every change to it is a patch next to
+`monitoring` (with VictoriaLogs, Grafana and its tailnet node), `egress`, `tetragon`, `server` and `backup`. An upstream file (the
+CSI driver, the CCM, Tetragon's chart output) is kept as its release ships it, and every change to it is a patch next to
 it.
 
 Flux applies them from `main` (`clusters/tenyard/`): its source and kustomize controllers run on
@@ -371,6 +371,47 @@ LogsQL in the UI: `stream:egress | stats by (host) count()` lists every host the
 `stream:egress client:<pod IP>` one box's requests (`kubectl -n tenbox get pod -o wide` or
 `kube_pod_info` in VictoriaMetrics maps a pod IP to its task).
 
+## Audit: Tetragon
+
+Tetragon (`install/tetragon`) records from the kernel of each worker, outside the box, what the
+processes of a box do: every exec and exit (binary, arguments, parent, uid, time), every outgoing
+TCP connection (policy `box-connect`), every open of a login file (`.claude/.credentials.json`,
+`.config/gh/hosts.yml`, `tenbox.local.yaml`) and every write under `/etc`, `/usr` or `/opt`
+(`box-files`). The policies are `TracingPolicyNamespaced` objects of namespace `tenbox` for pods
+labeled `app=tenyard`; they record and never block. A process in a box cannot stop the agent or
+change what it wrote.
+
+The agent runs on the workers only (the control-plane taint keeps it off) and writes the events
+of namespace `tenbox` to a file on the node; Fluent Bit in the same pod reads that file and posts
+each line to VictoriaLogs (`stream:tetragon`) at once. An event carries the pod's name and labels,
+so `task`, `command` and `job-name` (the run) find it.
+
+The runtime hook (`tetragon-rthooks`, through the NRI of k3s's containerd, which is on) tells the
+agent about a container before it starts. Without it a namespaced policy missed the first 22–45 ms
+of each container (`docs/numbers.md`). When the hook cannot reach the agent it lets the container
+start (`failAllowNamespaces`: `tenbox` and the system namespaces): a box that starts while the
+agent restarts runs without a record instead of failing, as a Job never retries.
+
+The chart has no plain YAML release: `tetragon.yaml` is `helm template` of the chart with
+`values.yaml`, unchanged. A new version, then the image digests in `values.yaml`:
+
+```
+docker run --rm -v "$PWD":/w -w /w alpine/helm:3.19.0 pull tetragon --repo https://helm.cilium.io --version <v> --untar
+docker run --rm -v "$PWD":/w -w /w alpine/helm:3.19.0 template tetragon ./tetragon --namespace tetragon \
+  -f install/tetragon/values.yaml > install/tetragon/tetragon.yaml
+```
+
+LogsQL (port-forward as above): every command of a task in order,
+
+```
+stream:tetragon "process_exec.process.pod.pod_labels.task":"<id>" | sort by (_time)
+  | fields _time, process_exec.process.binary, process_exec.process.arguments, process_exec.parent.binary
+```
+
+`"process_kprobe.function_name":"tcp_connect"` the connections (`| unpack_json from
+process_kprobe.args` for the address) and `"process_kprobe.function_name":"security_file_open"`
+the login files. Under gVisor the host kernel would see only `runsc`, not the box's processes.
+
 ## Server
 
 The tenbox server (`server/` of enojen/tenbox, image `ghcr.io/enojen/tenbox-server`, private)
@@ -523,7 +564,8 @@ hcloud server rebuild --image <snapshot id> <server>
 | VictoriaMetrics single node | v1.154.1 |
 | VictoriaLogs single node | v1.53.0 |
 | Squid (egress proxy) | 6.14, image `ubuntu/squid:6.6-24.04_edge` |
-| Fluent Bit (egress proxy) | 5.1.5 |
+| Fluent Bit (egress proxy, Tetragon) | 5.1.5 |
+| Tetragon | chart and agent 1.8.0, runtime hook v0.9, `install/tetragon/values.yaml` |
 | kube-state-metrics | v2.20.0 |
 | procs (box sidecar) | `procs/`, image by commit |
 | tenbox server | enojen/tenbox commit and digest, `install/server/server.yaml` |
