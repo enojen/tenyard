@@ -79,8 +79,8 @@ spec:
               valueFrom: { secretKeyRef: { name: project-__PROJECT_ID__, key: ntfy_url, optional: true } }
           # The resource class from classes.yaml.
           resources:
-            requests: { cpu: __CPU__, memory: __MEMORY__ }
-            limits: { memory: __MEMORY__ }
+            requests: { cpu: __CPU__, memory: __MEMORY__, ephemeral-storage: 256Mi }
+            limits: { memory: __MEMORY__, ephemeral-storage: 4Gi }
           volumeMounts:
             - { name: home, mountPath: /home/tenbox }
       volumes:

@@ -177,3 +177,26 @@ have; no other pod changed, and a running task Job went on.
 
 A field changed by hand (the schedule of the CronJob `offsite-backup`) came back in 3 s with
 `flux reconcile kustomization apps`, and in 134 s on its own, at the next run of the layer.
+
+## PIDs and local disk of a box (#16, #88)
+
+Source: 2026-11-07. The procs series `tenyard_procs_processes` of the last 30 days (120 runs;
+the sum of each group's own peak, so an upper bound), and `pids.peak` of the box's cgroup and
+the kubelet's `stats/summary` of a running build of the heavy project.
+
+| | value |
+|---|---|
+| processes in a run, highest (a `decide` of the heavy project) | 70 |
+| processes in a build, highest | 46 |
+| tasks (processes and threads) of a heavy build, `pids.peak` while it ran | 134 |
+| threads per process in that box | ~3.4 |
+| the box's disk outside its volume, heavy build | 58 MiB, mostly `/tmp` |
+| before: kubelet `podPidsLimit` | none; each container had `pids.max` 9208, 15 % of the node's `threads-max` (systemd) |
+
+The Postgres service allows 300 connections, one process each, so a build with it may add up
+to 300. Decision: 2048 PIDs per pod, about 4 times the worst case seen (~240 in the box plus
+300); 4Gi of local disk, request 256Mi.
+
+A pod that wrote 1 GiB to `/tmp` with an `ephemeral-storage` limit of 512Mi was evicted ("Pod
+ephemeral local storage usage exceeds the total limit of containers 512Mi."); the same pod
+with no limit went on. boot.sh logs `pids peak` next to `memory peak` from tenbox#223 on.

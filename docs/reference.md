@@ -31,7 +31,10 @@ and the runtime's default seccomp profile; the pod's `fsGroup` gives a new volum
 A pod of namespace `tenbox` reaches DNS and the internet only: the NetworkPolicy `box-egress`
 (`install/cluster/networkpolicy.yaml`) drops its traffic to the private ranges, the link-local
 range with the cloud metadata endpoint, and so to the cluster API, the nodes and other pods.
-Ingress is open, so the procs sidecar is still scraped.
+Ingress is open, so the procs sidecar is still scraped. A pod gets at most 2048 PIDs (the
+workers' kubelet, `install/autoscaler/worker-cloud-init.yaml`), and the box at most 4Gi of the
+node's disk outside its volume (`ephemeral-storage`, request 256Mi): past it the kubelet evicts
+the pod (`docs/numbers.md`, "PIDs and local disk of a box").
 
 ### Resource classes
 
