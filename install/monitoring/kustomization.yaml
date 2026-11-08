@@ -1,5 +1,5 @@
-# VictoriaMetrics, kube-state-metrics, Grafana and the tailnet node of Grafana. Grafana and the
+# VictoriaMetrics, VictoriaLogs, kube-state-metrics, Grafana and the tailnet node of Grafana. Grafana and the
 # tailnet node wait for their Secrets (install/README.md, "Grafana").
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-resources: [monitoring.yaml, tailnet.yaml, grafana]
+resources: [monitoring.yaml, logs.yaml, tailnet.yaml, grafana]

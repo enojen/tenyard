@@ -1,0 +1,90 @@
+# The egress proxy of the boxes: Squid, with Fluent Bit next to it sending each request line to
+# VictoriaLogs. On the control-plane server, so it never keeps a worker up.
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: proxy, namespace: egress }
+spec:
+  replicas: 1
+  # A new config starts the new pod before the old one stops: the boxes never lose the way out.
+  strategy: { type: RollingUpdate, rollingUpdate: { maxUnavailable: 0, maxSurge: 1 } }
+  selector: { matchLabels: { app: proxy } }
+  template:
+    metadata: { labels: { app: proxy } }
+    spec:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      terminationGracePeriodSeconds: 60
+      nodeSelector: { node-role.kubernetes.io/control-plane: "true" }
+      tolerations: [{ key: node-role.kubernetes.io/control-plane, operator: Exists, effect: NoSchedule }]
+      securityContext: { runAsNonRoot: true, seccompProfile: { type: RuntimeDefault } }
+      containers:
+        - name: squid
+          image: ubuntu/squid:6.6-24.04_edge@sha256:8a3baed477e2c282ab8aa5edad442f69873246964f225c5c2ae8364b6610963c
+          command: [squid, -N, -f, /config/squid.conf]
+          ports: [{ containerPort: 3128, name: proxy }]
+          securityContext:
+            runAsUser: 13
+            runAsGroup: 13
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities: { drop: [ALL] }
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { memory: 256Mi }
+          readinessProbe: { tcpSocket: { port: proxy }, periodSeconds: 2 }
+          # The Service drops the old pod first, then Squid stops taking new requests and gives the
+          # open ones 30 s (squid.conf).
+          lifecycle: { preStop: { sleep: { seconds: 10 } } }
+          volumeMounts:
+            - { name: config, mountPath: /config, readOnly: true }
+            - { name: run, mountPath: /run }
+            - { name: run, mountPath: /var/spool/squid, subPath: spool }
+            - { name: run, mountPath: /var/log/squid, subPath: log }
+        - name: fluent-bit
+          image: fluent/fluent-bit:5.1.5@sha256:2740f387f6e68fab66d28e4fa6a853387b9cab6ffb4cb78958f69bba4eb0e7b4
+          args: [-c, /config/fluent-bit.conf]
+          securityContext:
+            runAsUser: 65534
+            runAsGroup: 65534
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities: { drop: [ALL] }
+          resources:
+            requests: { cpu: 10m, memory: 16Mi }
+            limits: { memory: 64Mi }
+          volumeMounts: [{ name: config, mountPath: /config, readOnly: true }]
+      volumes:
+        - { name: config, configMap: { name: proxy } }
+        - { name: run, emptyDir: { sizeLimit: 64Mi } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: proxy, namespace: egress }
+spec:
+  selector: { app: proxy }
+  ports: [{ port: 3128, targetPort: proxy, name: proxy }]
+---
+# Only the boxes reach the proxy. The proxy reaches DNS, VictoriaLogs and the internet; its own
+# rule drops the private ranges too (squid.conf), so it is no way around box-egress.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: proxy, namespace: egress }
+spec:
+  podSelector: { matchLabels: { app: proxy } }
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: tenbox } } }]
+      ports: [{ protocol: TCP, port: 3128 }]
+  egress:
+    - to:
+        - namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: kube-system } }
+          podSelector: { matchLabels: { k8s-app: kube-dns } }
+      ports: [{ protocol: UDP, port: 53 }, { protocol: TCP, port: 53 }]
+    - to:
+        - namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: monitoring } }
+          podSelector: { matchLabels: { app: victoria-logs } }
+      ports: [{ protocol: TCP, port: 9428 }]
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16, 100.64.0.0/10]

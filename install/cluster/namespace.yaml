@@ -21,3 +21,10 @@ kind: Namespace
 metadata:
   name: monitoring
   annotations: { kustomize.toolkit.fluxcd.io/prune: disabled }
+---
+# The egress proxy of the boxes (install/egress).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: egress
+  annotations: { kustomize.toolkit.fluxcd.io/prune: disabled }

@@ -1,0 +1,55 @@
+# VictoriaLogs single node: the log lines of the egress proxy, a year long.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata: { name: victoria-logs, namespace: monitoring }
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: hcloud-volumes
+  resources: { requests: { storage: 10Gi } }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: victoria-logs, namespace: monitoring }
+spec:
+  replicas: 1
+  strategy: { type: Recreate }
+  selector: { matchLabels: { app: victoria-logs } }
+  template:
+    metadata: { labels: { app: victoria-logs } }
+    spec:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      nodeSelector: { node-role.kubernetes.io/control-plane: "true" }
+      tolerations: [{ key: node-role.kubernetes.io/control-plane, operator: Exists, effect: NoSchedule }]
+      securityContext:
+        runAsUser: 65534
+        runAsGroup: 65534
+        runAsNonRoot: true
+        fsGroup: 65534
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: victoria-logs
+          image: victoriametrics/victoria-logs:v1.53.0@sha256:251121fa882af99b95ba0c230a4a2f412ea602d2698c64a96c58dc9842bb755d
+          args:
+            - -storageDataPath=/storage
+            - -retentionPeriod=1y
+            - -retention.maxDiskSpaceUsageBytes=8GiB
+            - -httpListenAddr=:9428
+          ports: [{ containerPort: 9428, name: http }]
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities: { drop: [ALL] }
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { memory: 512Mi }
+          volumeMounts: [{ name: storage, mountPath: /storage }]
+          readinessProbe: { httpGet: { path: /health, port: http } }
+      volumes: [{ name: storage, persistentVolumeClaim: { claimName: victoria-logs } }]
+---
+apiVersion: v1
+kind: Service
+metadata: { name: victoria-logs, namespace: monitoring }
+spec:
+  selector: { app: victoria-logs }
+  ports: [{ port: 9428, targetPort: http, name: http }]

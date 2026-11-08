@@ -1,0 +1,8 @@
+# The egress proxy of the boxes. A changed config gets a new ConfigMap name, so the pod restarts.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources: [proxy.yaml]
+configMapGenerator:
+  - name: proxy
+    namespace: egress
+    files: [squid.conf, fluent-bit.conf]

@@ -1,5 +1,6 @@
-# A box reaches DNS and the internet, nothing private: not the cluster API, the nodes, other
-# pods or the cloud metadata endpoint. Ingress stays open, so the procs sidecar is still scraped.
+# A box reaches DNS, the egress proxy and the internet, nothing else private: not the cluster API,
+# the nodes, other pods or the cloud metadata endpoint. Ingress stays open, so the procs sidecar
+# is still scraped.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -13,6 +14,10 @@ spec:
         - namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: kube-system } }
           podSelector: { matchLabels: { k8s-app: kube-dns } }
       ports: [{ protocol: UDP, port: 53 }, { protocol: TCP, port: 53 }]
+    - to:
+        - namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: egress } }
+          podSelector: { matchLabels: { app: proxy } }
+      ports: [{ protocol: TCP, port: 3128 }]
     - to:
         - ipBlock:
             cidr: 0.0.0.0/0

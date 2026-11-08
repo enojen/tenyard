@@ -77,6 +77,13 @@ spec:
               valueFrom: { secretKeyRef: { name: project-__PROJECT_ID__, key: tracker_api_key, optional: true } }
             - name: NTFY_URL
               valueFrom: { secretKeyRef: { name: project-__PROJECT_ID__, key: ntfy_url, optional: true } }
+            # The way out (install/egress); boot.sh passes these on to the run.
+            - { name: HTTPS_PROXY, value: http://proxy.egress.svc.cluster.local:3128 }
+            - { name: HTTP_PROXY, value: http://proxy.egress.svc.cluster.local:3128 }
+            - { name: NO_PROXY, value: "localhost,127.0.0.1,::1" }
+            - { name: NODE_USE_ENV_PROXY, value: "1" }
+            - { name: DISABLE_TELEMETRY, value: "1" }
+            - { name: DISABLE_ERROR_REPORTING, value: "1" }
           # The resource class from classes.yaml.
           resources:
             requests: { cpu: __CPU__, memory: __MEMORY__, ephemeral-storage: 256Mi }
