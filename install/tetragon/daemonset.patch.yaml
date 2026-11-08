@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: tetragon
+  namespace: tetragon
+  annotations:
+    ignore-check.kube-linter.io/run-as-non-root: "the agent loads eBPF programs and the shipper reads the agent's root-only file"
+    ignore-check.kube-linter.io/no-read-only-root-fs: "as upstream ships the agent"
+    ignore-check.kube-linter.io/privileged-container: "the init container mounts the BPF file system, as upstream ships it"
+    ignore-check.kube-linter.io/privilege-escalation-container: "the agent needs SYS_ADMIN for eBPF and the init container mounts the BPF file system, as upstream ships them"
+    ignore-check.kube-linter.io/sensitive-host-mounts: "the agent reads /proc and /sys/fs/bpf of the node"
+spec:
+  template:
+    spec:
+      initContainers:
+        - name: mount-bpf-fs
+          resources:
+            requests: { cpu: 10m, memory: 16Mi }
+            limits: { memory: 32Mi }
+      containers:
+        - name: tetragon
+          ports: [{ containerPort: 6789, name: health }]
+          resources:
+            requests: { cpu: 50m, memory: 256Mi }
+            limits: { memory: 512Mi }
+        - name: fluent-bit
+          image: fluent/fluent-bit:5.1.5@sha256:2740f387f6e68fab66d28e4fa6a853387b9cab6ffb4cb78958f69bba4eb0e7b4
+          args: [-c, /config/fluent-bit.conf]
+          securityContext:
+            runAsUser: 0
+            runAsGroup: 0
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities: { drop: [ALL] }
+          resources:
+            requests: { cpu: 10m, memory: 16Mi }
+            limits: { memory: 64Mi }
+          volumeMounts:
+            - { name: fluent-bit-config, mountPath: /config, readOnly: true }
+            - { name: export-logs, mountPath: /var/log/tetragon }
+      volumes:
+        - { name: fluent-bit-config, configMap: { name: tetragon-fluent-bit } }

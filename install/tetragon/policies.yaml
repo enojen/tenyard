@@ -1,0 +1,39 @@
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicyNamespaced
+metadata: { name: box-connect, namespace: tenbox }
+spec:
+  podSelector: { matchLabels: { app: tenyard } }
+  kprobes:
+    - call: tcp_connect
+      syscall: false
+      args: [{ index: 0, type: sock }]
+---
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicyNamespaced
+metadata: { name: box-files, namespace: tenbox }
+spec:
+  podSelector: { matchLabels: { app: tenyard } }
+  kprobes:
+    - call: security_file_open
+      syscall: false
+      args: [{ index: 0, type: file }]
+      selectors:
+        - matchArgs:
+            - index: 0
+              operator: Equal
+              values: [/home/tenbox/.claude/.credentials.json, /home/tenbox/.config/gh/hosts.yml]
+        - matchArgs:
+            - index: 0
+              operator: Postfix
+              values: [/tenbox.local.yaml]
+    - call: security_file_permission
+      syscall: false
+      args: [{ index: 0, type: file }, { index: 1, type: int }]
+      selectors:
+        - matchArgs:
+            - index: 0
+              operator: Prefix
+              values: [/etc/, /usr/, /opt/]
+            - index: 1
+              operator: Mask
+              values: ["2"]
