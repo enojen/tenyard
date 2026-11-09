@@ -371,6 +371,36 @@ LogsQL in the UI: `stream:egress | stats by (host) count()` lists every host the
 `stream:egress client:<pod IP>` one box's requests (`kubectl -n tenbox get pod -o wide` or
 `kube_pod_info` in VictoriaMetrics maps a pod IP to its task).
 
+## The injector
+
+The injector (`install/egress/injector.yaml`) runs next to Squid on the control-plane server, as
+a non-root user with a read-only root file system; `docs/reference.md` says what it does. Its CA
+certificate is `install/egress/injector-ca.crt` (public, in git); the CA key and the injector's
+token for the server are the Secret `egress/injector`, the same token and the key of the run
+placeholders `tenbox-server/run-credentials`. A new CA, valid 5 years, for the four credential
+hosts:
+
+```
+cat > ca.cnf << 'EOF'
+[req]
+distinguished_name = dn
+prompt = no
+[dn]
+CN = tenyard injector CA
+[v3_ca]
+basicConstraints = critical, CA:TRUE, pathlen:0
+keyUsage = critical, keyCertSign, cRLSign
+subjectKeyIdentifier = hash
+nameConstraints = critical, permitted;DNS:github.com, permitted;DNS:api.github.com, permitted;DNS:api.linear.app, permitted;DNS:api.clickup.com
+EOF
+openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-256 -out ca.key
+openssl req -x509 -new -key ca.key -days 1826 -out install/egress/injector-ca.crt -config ca.cnf -extensions v3_ca
+```
+
+Then `ca.key` goes into `secrets/egress/injector.sops.yaml` ("Secrets") and is deleted. The
+certificate and the key change in one commit. A new credential host is a `--host` of the
+Deployment, a name in the `credential` acl of `squid.conf` and a name in the CA's constraints.
+
 ## Audit: Tetragon
 
 Tetragon (`install/tetragon`) records from the kernel of each worker, outside the box, what the
@@ -427,11 +457,15 @@ runs in namespace `tenbox-server` on the server, next to the control plane
   HTTP until TLS.
 - Its account reads nodes, and pods, their logs, Jobs and volume claims of namespace `tenbox`,
   to record workers, machine runs and task volumes: the box's last log line counts the
-  processes killed by OOM inside a container that lived on. It reads no Secret and creates
-  nothing. It deletes one thing: the volume claim of a task whose `tenbox close` ended with
-  exit code 0, 3 days after the close (`TENBOX_SERVER_VOLUME_GRACE_DAYS`; enojen/tenbox#212).
+  processes killed by OOM inside a container that lived on. It reads no Secret; it creates the
+  run placeholder Secret of each open Job (`task-<name>-<run>-github`). It deletes one thing:
+  the volume claim of a task whose `tenbox close` ended with exit code 0, 3 days after the close
+  (`TENBOX_SERVER_VOLUME_GRACE_DAYS`; enojen/tenbox#212).
 - `TENBOX_SERVER_NTFY` from the Secret `ntfy` (key `url`, optional): the ntfy topic URL for the
   notice about an open task's volume with no run for 7 days. Without the Secret no notice goes.
+- `TENBOX_SERVER_RUN_CREDENTIAL_KEY_FILE` and `TENBOX_SERVER_INJECTOR_TOKEN_FILE` from the
+  Secret `run-credentials` (keys `key` and `injector-token`): the key of the run placeholders and
+  the injector's token. With the GitHub App set, the server does not start without them.
 - `enableServiceLinks: false`: else Kubernetes sets `TENBOX_SERVER_PORT=tcp://...` for the
   Service of the same name and the server reads it as its port.
 - `HCLOUD_TOKEN` from the Secret `hcloud`: a **read-only** Hetzner API token of the project.

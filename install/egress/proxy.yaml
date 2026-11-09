@@ -77,6 +77,8 @@ spec:
         - namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: monitoring } }
           podSelector: { matchLabels: { app: victoria-logs } }
       ports: [{ protocol: TCP, port: 9428 }]
+    - to: [{ podSelector: { matchLabels: { app: injector } } }]
+      ports: [{ protocol: TCP, port: 3129 }]
     - to:
         - ipBlock:
             cidr: 0.0.0.0/0

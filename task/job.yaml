@@ -70,9 +70,7 @@ spec:
                 __ENV__
             - name: GITHUB_TOKEN
               valueFrom: { secretKeyRef: { name: task-__NAME__-__RUN__-github, key: token } }
-            # A project's own token (tenbox#162); the box prefers it over GITHUB_TOKEN.
-            - name: PROJECT_GITHUB_TOKEN
-              valueFrom: { secretKeyRef: { name: project-__PROJECT_ID__, key: github_token, optional: true } }
+            - { name: TENBOX_INJECTOR_CA, value: /etc/tenyard/injector/ca.crt }
             - name: CLAUDE_CREDENTIALS
               valueFrom: { secretKeyRef: { name: claude-credentials, key: credentials.json } }
             - name: TRACKER_API_KEY
@@ -91,6 +89,9 @@ spec:
             limits: { memory: __MEMORY__, ephemeral-storage: 4Gi }
           volumeMounts:
             - { name: home, mountPath: /home/tenbox }
+            - { name: injector-ca, mountPath: /etc/tenyard/injector, readOnly: true }
       volumes:
         - name: home
           persistentVolumeClaim: { claimName: task-__NAME__ }
+        - name: injector-ca
+          configMap: { name: injector-ca }

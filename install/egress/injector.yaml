@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: injector, namespace: egress }
+spec:
+  replicas: 1
+  strategy: { type: RollingUpdate, rollingUpdate: { maxUnavailable: 0, maxSurge: 1 } }
+  selector: { matchLabels: { app: injector } }
+  template:
+    metadata: { labels: { app: injector } }
+    spec:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      terminationGracePeriodSeconds: 30
+      nodeSelector: { node-role.kubernetes.io/control-plane: "true" }
+      tolerations: [{ key: node-role.kubernetes.io/control-plane, operator: Exists, effect: NoSchedule }]
+      securityContext: { runAsNonRoot: true, fsGroup: 65534, seccompProfile: { type: RuntimeDefault } }
+      containers:
+        - name: injector
+          image: ghcr.io/enojen/tenyard-injector:f42de645013e9021238a4e5219b0598e88e76729@sha256:92fc8f49f626df72b3b8425817d9e75b1713ba9c4e74ae4e9fb783f9d586c213
+          args:
+            - --ca-cert
+            - /ca/ca.crt
+            - --ca-key
+            - /secret/ca.key
+            - --host
+            - github.com
+            - --host
+            - api.github.com
+            - --host
+            - api.linear.app
+            - --host
+            - api.clickup.com
+            - --server
+            - http://tenbox-server.tenbox-server.svc.cluster.local:4300/run-credentials
+            - --server-token
+            - /secret/token
+          ports: [{ containerPort: 3129, name: injector }]
+          securityContext:
+            runAsUser: 65534
+            runAsGroup: 65534
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities: { drop: [ALL] }
+          resources:
+            requests: { cpu: 20m, memory: 16Mi }
+            limits: { memory: 128Mi }
+          readinessProbe: { tcpSocket: { port: injector }, periodSeconds: 2 }
+          lifecycle: { preStop: { sleep: { seconds: 5 } } }
+          volumeMounts:
+            - { name: ca, mountPath: /ca, readOnly: true }
+            - { name: secret, mountPath: /secret, readOnly: true }
+      volumes:
+        - { name: ca, configMap: { name: injector-ca } }
+        - { name: secret, secret: { secretName: injector, defaultMode: 0440 } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: injector, namespace: egress }
+spec:
+  selector: { app: injector }
+  ports: [{ port: 3129, targetPort: injector, name: injector }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: injector, namespace: egress }
+spec:
+  podSelector: { matchLabels: { app: injector } }
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from: [{ podSelector: { matchLabels: { app: proxy } } }]
+      ports: [{ protocol: TCP, port: 3129 }]
+  egress:
+    - to:
+        - namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: kube-system } }
+          podSelector: { matchLabels: { k8s-app: kube-dns } }
+      ports: [{ protocol: UDP, port: 53 }, { protocol: TCP, port: 53 }]
+    - to:
+        - namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: tenbox-server } }
+          podSelector: { matchLabels: { app: tenbox-server } }
+      ports: [{ protocol: TCP, port: 4300 }]
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16, 100.64.0.0/10]
+      ports: [{ protocol: TCP, port: 443 }]
