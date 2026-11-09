@@ -48,6 +48,18 @@ way and duration. An HTTPS request shows its host and port only; the proxy never
 pods of `tenbox` reach it. A box still has DNS and a direct way out; #90 closes both and keeps
 only the hosts the log shows.
 
+Squid sends the CONNECT of four credential hosts, `github.com`, `api.github.com`, `api.linear.app`
+and `api.clickup.com`, to the injector (`install/egress/injector.yaml`, code in `injector/`) and
+never straight out, so without the injector these hosts fail. The injector ends the box's TLS
+with a leaf of its own CA and writes the run's real token in place of the run placeholder
+(`tbxph_...`) in `Authorization`; it asks the tenbox server for that token (`POST /run-credentials`
+with its own token). Any other `Authorization` passes as it is, and it never reads a body. The box
+trusts the CA through the ConfigMap `injector-ca` of namespace `tenbox`, mounted at
+`/etc/tenyard/injector/ca.crt` and named by `TENBOX_INJECTOR_CA`: boot.sh adds it to the system
+roots for git, gh, curl, node and bun. The CA's name constraints allow only these four names (and
+names under them), so its key cannot stand in for another site. The injector takes connections
+from Squid only and reaches DNS, port 4300 of the server and port 443 of the internet.
+
 ### Resource classes
 
 `task/classes.yaml` names three classes; the agent picks one per Job (tenbox: `start` and
@@ -101,16 +113,18 @@ A sidecar is a native one, an init container with `restartPolicy: Always`: the b
 after its startup probe passes, and the Job ends when the box ends. Its RAM is its own, on top of
 the class of the box; data in an `emptyDir` with `medium: Memory` counts in that RAM.
 
-The Job reads four Secrets in the namespace. The first is in `secrets/tenbox/`, applied by
-Flux; the tenbox server writes the run token for each Job, the agent's login sync writes the
-login, and the agent writes the project Secret before each Job (tenbox: `tenbox machine run`):
+The Job reads four Secrets and one ConfigMap in the namespace. The first Secret is in
+`secrets/tenbox/`, applied by Flux; the tenbox server writes the run placeholder for each Job,
+the agent's login sync writes the login, and the agent writes the project Secret before each Job
+(tenbox: `tenbox machine run`). The ConfigMap `injector-ca` (`ca.crt`) is the injector's CA,
+from `install/egress/injector-ca.crt`:
 
 | Secret | Key | What |
 |---|---|---|
 | `ghcr` | `.dockerconfigjson` | pull secret of the private image (a GitHub token with `read:packages`) |
-| `task-<name>-<run>-github` | `token` | the run token: a GitHub App token for the repository of the Job's project only (contents, pull requests and issues write), one hour long; empty when the App is not installed there. The pod waits until the server writes it; the Job owns it, so it goes with the Job. The Job carries the label `project-id` for it |
+| `task-<name>-<run>-github` | `token` | the run placeholder, `tbxph_` and an HMAC of the Job's uid: the injector writes the run token in its place, a GitHub App token for the repository of the Job's project only (contents, pull requests and issues write), one hour long. Empty when the App is not installed there, and the box then stops at start. The pod waits until the server writes it; the Job owns it, so it goes with the Job. The Job carries the label `project-id` for it |
 | `claude-credentials` | `credentials.json` | the claude.ai login, `~/.claude/.credentials.json` |
-| `project-<project id>` | `tracker_api_key`, `ntfy_url`, `github_token` | the project's tracker key, notification topic and own GitHub token (all optional; the box prefers `github_token` over the run token) |
+| `project-<project id>` | `tracker_api_key`, `ntfy_url` | the project's tracker key and notification topic (both optional) |
 
 What the box does with them is the image's business (tenbox `machines/k8s/boot.sh`).
 
