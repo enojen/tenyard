@@ -1,8 +1,12 @@
 apiVersion: apps/v1
 kind: Deployment
-metadata: { name: proxy, namespace: egress }
+metadata:
+  name: proxy
+  namespace: egress
+  annotations:
+    ignore-check.kube-linter.io/no-anti-affinity: "one control-plane server: the two copies cover a restart, not a lost server"
 spec:
-  replicas: 1
+  replicas: 2
   strategy: { type: RollingUpdate, rollingUpdate: { maxUnavailable: 0, maxSurge: 1 } }
   selector: { matchLabels: { app: proxy } }
   template:
@@ -13,7 +17,43 @@ spec:
       terminationGracePeriodSeconds: 60
       nodeSelector: { node-role.kubernetes.io/control-plane: "true" }
       tolerations: [{ key: node-role.kubernetes.io/control-plane, operator: Exists, effect: NoSchedule }]
-      securityContext: { runAsNonRoot: true, seccompProfile: { type: RuntimeDefault } }
+      securityContext: { runAsNonRoot: true, fsGroup: 65534, seccompProfile: { type: RuntimeDefault } }
+      initContainers:
+        - name: injector
+          image: ghcr.io/enojen/tenyard-injector:f42de645013e9021238a4e5219b0598e88e76729@sha256:92fc8f49f626df72b3b8425817d9e75b1713ba9c4e74ae4e9fb783f9d586c213
+          restartPolicy: Always
+          args:
+            - --ca-cert
+            - /ca/ca.crt
+            - --ca-key
+            - /secret/ca.key
+            - --host
+            - github.com
+            - --host
+            - api.github.com
+            - --host
+            - api.linear.app
+            - --host
+            - api.clickup.com
+            - --server
+            - http://tenbox-server.tenbox-server.svc.cluster.local:4300/run-credentials
+            - --server-token
+            - /secret/token
+          ports: [{ containerPort: 3129, name: injector }]
+          securityContext:
+            runAsUser: 65534
+            runAsGroup: 65534
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities: { drop: [ALL] }
+          resources:
+            requests: { cpu: 20m, memory: 16Mi }
+            limits: { memory: 128Mi }
+          startupProbe: { tcpSocket: { port: injector }, periodSeconds: 1, failureThreshold: 30 }
+          readinessProbe: { tcpSocket: { port: injector }, periodSeconds: 2 }
+          volumeMounts:
+            - { name: injector-ca, mountPath: /ca, readOnly: true }
+            - { name: injector, mountPath: /secret, readOnly: true }
       containers:
         - name: squid
           image: ubuntu/squid:6.6-24.04_edge@sha256:8a3baed477e2c282ab8aa5edad442f69873246964f225c5c2ae8364b6610963c
@@ -50,6 +90,8 @@ spec:
           volumeMounts: [{ name: config, mountPath: /config, readOnly: true }]
       volumes:
         - { name: config, configMap: { name: proxy } }
+        - { name: injector-ca, configMap: { name: injector-ca } }
+        - { name: injector, secret: { secretName: injector, defaultMode: 0440 } }
         - { name: run, emptyDir: { sizeLimit: 64Mi } }
 ---
 apiVersion: v1
@@ -77,9 +119,19 @@ spec:
         - namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: monitoring } }
           podSelector: { matchLabels: { app: victoria-logs } }
       ports: [{ protocol: TCP, port: 9428 }]
-    - to: [{ podSelector: { matchLabels: { app: injector } } }]
-      ports: [{ protocol: TCP, port: 3129 }]
+    - to:
+        - namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: tenbox-server } }
+          podSelector: { matchLabels: { app: tenbox-server } }
+      ports: [{ protocol: TCP, port: 4300 }]
     - to:
         - ipBlock:
             cidr: 0.0.0.0/0
             except: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16, 100.64.0.0/10]
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata: { name: proxy, namespace: egress }
+spec:
+  minAvailable: 1
+  unhealthyPodEvictionPolicy: AlwaysAllow
+  selector: { matchLabels: { app: proxy } }
