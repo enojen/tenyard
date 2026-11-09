@@ -467,9 +467,13 @@ runs in namespace `tenbox-server` on the server, next to the control plane
   (`TENBOX_SERVER_VOLUME_GRACE_DAYS`; enojen/tenbox#212).
 - `TENBOX_SERVER_NTFY` from the Secret `ntfy` (key `url`, optional): the ntfy topic URL for the
   notice about an open task's volume with no run for 7 days. Without the Secret no notice goes.
-- `TENBOX_SERVER_RUN_CREDENTIAL_KEY_FILE` and `TENBOX_SERVER_INJECTOR_TOKEN_FILE` from the
-  Secret `run-credentials` (keys `key` and `injector-token`): the key of the run placeholders and
-  the injector's token. With the GitHub App set, the server does not start without them.
+- `TENBOX_SERVER_RUN_CREDENTIAL_KEY_FILE`, `TENBOX_SERVER_INJECTOR_TOKEN_FILE` and
+  `TENBOX_SERVER_ENCRYPTION_KEY_FILE` from the Secret `run-credentials` (keys `key`,
+  `injector-token` and `encryption-key`): the key of the run placeholders, the injector's token
+  and the key that seals the projects' tracker keys in the database. With the GitHub App set, the
+  server does not start without them. A project's tracker key goes in once, on stdin:
+  `kubectl -n tenbox-server exec -i deploy/tenbox-server -c server -- tenbox-server project
+  tracker-key --id <project id> --tracker clickup < key-file`.
 - `enableServiceLinks: false`: else Kubernetes sets `TENBOX_SERVER_PORT=tcp://...` for the
   Service of the same name and the server reads it as its port.
 - `HCLOUD_TOKEN` from the Secret `hcloud`: a **read-only** Hetzner API token of the project.

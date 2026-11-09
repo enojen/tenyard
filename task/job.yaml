@@ -74,7 +74,7 @@ spec:
             - name: CLAUDE_CREDENTIALS
               valueFrom: { secretKeyRef: { name: claude-credentials, key: credentials.json } }
             - name: TRACKER_API_KEY
-              valueFrom: { secretKeyRef: { name: project-__PROJECT_ID__, key: tracker_api_key, optional: true } }
+              valueFrom: { secretKeyRef: { name: task-__NAME__-__RUN__-github, key: tracker, optional: true } }
             - name: NTFY_URL
               valueFrom: { secretKeyRef: { name: project-__PROJECT_ID__, key: ntfy_url, optional: true } }
             - { name: HTTPS_PROXY, value: http://proxy.egress.svc.cluster.local:3128 }

@@ -99,6 +99,7 @@ spec:
             - { name: TENBOX_SERVER_GITHUB_APP_KEY_FILE, value: /github-app/key.pem }
             - { name: TENBOX_SERVER_RUN_CREDENTIAL_KEY_FILE, value: /run-credentials/key }
             - { name: TENBOX_SERVER_INJECTOR_TOKEN_FILE, value: /run-credentials/injector-token }
+            - { name: TENBOX_SERVER_ENCRYPTION_KEY_FILE, value: /run-credentials/encryption-key }
           resources:
             requests: { cpu: 50m, memory: 128Mi }
             limits: { memory: 512Mi }
