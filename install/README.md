@@ -353,12 +353,14 @@ does not expire. Delete `tailscale-auth` after the first start if you like.
 
 VictoriaLogs single node keeps the request lines of the egress proxy for a year, at most 8 GiB, on
 its own 10 GB volume next to VictoriaMetrics (`install/monitoring/logs.yaml`). The proxy
-(`install/egress`) runs on the control-plane server, so it never keeps a worker up: Squid, and
-Fluent Bit that takes Squid's lines over TCP on the pod's loopback and posts them to VictoriaLogs.
-Both run as non-root users with a read-only root file system. A changed `squid.conf` gets a new
-ConfigMap name, so the pod is replaced: the new one starts first, and the old one leaves the
-Service 10 s before Squid stops, which gives open requests 30 s more (0 failed requests of 311
-during a restart, 75 of 271 without the wait). Squid holds 8192 open files, about 4000 tunnels,
+(`install/egress`) runs on the control-plane server, so it never keeps a worker up: two copies of
+one pod, each with the injector (a native sidecar, "The injector"), Squid, and Fluent Bit that
+takes Squid's lines over TCP on the pod's loopback and posts them to VictoriaLogs. All run as
+non-root users with a read-only root file system; a PodDisruptionBudget keeps one copy up. A
+changed `squid.conf` gets a new ConfigMap name, so the pods are replaced: a new one starts first,
+and an old one leaves the Service 10 s before Squid stops, which gives open requests 30 s more (0
+failed requests of 311 during a restart, 75 of 271 without the wait; with the injector, 0 of 441
+through a rollout and a deleted pod). Squid holds 8192 open files, about 4000 tunnels,
 in 13 MiB.
 
 ```
@@ -373,8 +375,10 @@ LogsQL in the UI: `stream:egress | stats by (host) count()` lists every host the
 
 ## The injector
 
-The injector (`install/egress/injector.yaml`) runs next to Squid on the control-plane server, as
-a non-root user with a read-only root file system; `docs/reference.md` says what it does. Its CA
+The injector is the first container of the proxy pod (`install/egress/proxy.yaml`), a native
+sidecar: Squid starts once the injector listens, and reaches it on `127.0.0.1:3129`; the injector
+stops after Squid. It runs as a non-root user with a read-only root file system;
+`docs/reference.md` says what it does. Its CA
 certificate is `install/egress/injector-ca.crt` (public, in git); the CA key and the injector's
 token for the server are the Secret `egress/injector`, the same token and the key of the run
 placeholders `tenbox-server/run-credentials`. A new CA, valid 5 years, for the four credential
@@ -399,7 +403,7 @@ openssl req -x509 -new -key ca.key -days 1826 -out install/egress/injector-ca.cr
 
 Then `ca.key` goes into `secrets/egress/injector.sops.yaml` ("Secrets") and is deleted. The
 certificate and the key change in one commit. A new credential host is a `--host` of the
-Deployment, a name in the `credential` acl of `squid.conf` and a name in the CA's constraints.
+injector, a name in the `credential` acl of `squid.conf` and a name in the CA's constraints.
 
 ## Audit: Tetragon
 

@@ -1,6 +1,6 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-resources: [proxy.yaml, injector.yaml]
+resources: [proxy.yaml]
 configMapGenerator:
   - name: proxy
     namespace: egress

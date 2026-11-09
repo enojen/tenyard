@@ -49,16 +49,18 @@ pods of `tenbox` reach it. A box still has DNS and a direct way out; #90 closes 
 only the hosts the log shows.
 
 Squid sends the CONNECT of four credential hosts, `github.com`, `api.github.com`, `api.linear.app`
-and `api.clickup.com`, to the injector (`install/egress/injector.yaml`, code in `injector/`) and
-never straight out, so without the injector these hosts fail. The injector ends the box's TLS
+and `api.clickup.com`, to the injector (a sidecar in Squid's pod, `install/egress/proxy.yaml`; code
+in `injector/`) on `127.0.0.1:3129` and never straight out, so without the injector these hosts fail. The injector ends the box's TLS
 with a leaf of its own CA and writes the run's real token in place of the run placeholder
 (`tbxph_...`) in `Authorization`; it asks the tenbox server for that token (`POST /run-credentials`
 with its own token). Any other `Authorization` passes as it is, and it never reads a body. The box
 trusts the CA through the ConfigMap `injector-ca` of namespace `tenbox`, mounted at
 `/etc/tenyard/injector/ca.crt` and named by `TENBOX_INJECTOR_CA`: boot.sh adds it to the system
 roots for git, gh, curl, node and bun. The CA's name constraints allow only these four names (and
-names under them), so its key cannot stand in for another site. The injector takes connections
-from Squid only and reaches DNS, port 4300 of the server and port 443 of the internet.
+names under them), so its key cannot stand in for another site. The injector starts before Squid
+and its readiness is the pod's: a pod whose injector is down leaves the Service, so Squid never
+marks it dead (a Squid that starts without it, or that fails 10 connections to it, fails the
+first request after it is back). The pod reaches port 4300 of the server for the lookup.
 
 ### Resource classes
 
