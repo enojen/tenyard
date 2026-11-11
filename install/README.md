@@ -286,8 +286,10 @@ control plane (`install/monitoring/monitoring.yaml`). It scrapes every 30 s:
   or IO (pressure stall information: `container_pressure_*_seconds_total`); nothing else, as
   cAdvisor has hundreds more.
 - the tenbox server's `/metrics`: `tenbox_node_price_eur_hourly{node, server_type, location}`, the
-  hourly list price of each worker that is up, from its `node.added` (enojen/tenbox#198). The
-  exact paid euros stay in the server's cost report, which counts started hours.
+  hourly list price of each server of the cluster that is up, the control plane too, from its
+  `node.added` (enojen/tenbox#198), and `tenbox_volume_price_eur_hourly{volume, task, size_gb}`,
+  that of each task volume, from its `volume.added` (enojen/tenbox#294). The exact paid euros stay
+  in the server's cost report, which counts started hours.
 - the `processes` sidecar of each running box pod, every 10 s, from the pod IP: CPU, anonymous
   memory and process count per process group inside the box, with the pod's `task`, `project`,
   `command` and `class` (README, "Process metrics"). A Role in namespace `tenbox` lets
