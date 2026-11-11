@@ -42,7 +42,7 @@ spec:
       securityContext: { runAsUser: 472, runAsGroup: 472, fsGroup: 472, runAsNonRoot: true }
       containers:
         - name: grafana
-          image: grafana/grafana:13.2.4
+          image: grafana/grafana:13.2.4@sha256:dbbc38ea21103cefb50396340cd88afec779c7e070b0a7bf5a75b4ce46651d3f
           env:
             - { name: GF_SECURITY_ADMIN_USER, value: admin }
             - name: GF_SECURITY_ADMIN_PASSWORD
@@ -56,6 +56,9 @@ spec:
             # No plugin downloads: Grafana 13 updates its bundled plugins at start, which fails on the
             # read-only file system and leaves the Prometheus data source unregistered.
             - { name: GF_PLUGINS_PREINSTALL_DISABLED, value: "true" }
+            # Every bundled data source but Prometheus: each one runs as its own process.
+            - name: GF_PLUGINS_DISABLE_PLUGINS
+              value: elasticsearch,grafana-postgresql-datasource,grafana-pyroscope-datasource,influxdb,jaeger,loki,mssql,mysql,opentsdb,stackdriver,tempo,zipkin
             - { name: GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH, value: /var/lib/grafana/dashboards/tenyard.json }
           ports: [{ containerPort: 3000, name: http }]
           readinessProbe: { httpGet: { path: /api/health, port: http } }
@@ -65,7 +68,7 @@ spec:
             capabilities: { drop: [ALL] }
           resources:
             requests: { cpu: 50m, memory: 256Mi }
-            limits: { memory: 512Mi }
+            limits: { cpu: "1", memory: 512Mi }
           volumeMounts:
             - { name: data, mountPath: /var/lib/grafana }
             - { name: tmp, mountPath: /tmp }
