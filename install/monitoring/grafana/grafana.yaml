@@ -60,6 +60,7 @@ spec:
             - name: GF_PLUGINS_DISABLE_PLUGINS
               value: elasticsearch,grafana-postgresql-datasource,grafana-pyroscope-datasource,influxdb,jaeger,loki,mssql,mysql,opentsdb,stackdriver,tempo,zipkin
             - { name: GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH, value: /var/lib/grafana/dashboards/tenyard.json }
+            - { name: GOMEMLIMIT, value: 640MiB }
           ports: [{ containerPort: 3000, name: http }]
           readinessProbe: { httpGet: { path: /api/health, port: http } }
           securityContext:
@@ -67,8 +68,8 @@ spec:
             readOnlyRootFilesystem: true
             capabilities: { drop: [ALL] }
           resources:
-            requests: { cpu: 50m, memory: 256Mi }
-            limits: { cpu: "1", memory: 512Mi }
+            requests: { cpu: 50m, memory: 384Mi }
+            limits: { cpu: "1", memory: 1Gi }
           volumeMounts:
             - { name: data, mountPath: /var/lib/grafana }
             - { name: tmp, mountPath: /tmp }
