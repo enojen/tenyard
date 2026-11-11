@@ -696,6 +696,8 @@
     {
       "type": "stat",
       "title": "Worker time with no run",
+      "interval": "1m",
+      "maxDataPoints": 2000,
       "description": "The share of the time a worker was up with no run on it: paid for and not used.",
       "id": 14,
       "datasource": {
@@ -717,7 +719,7 @@
           "refId": "A",
           "instant": true,
           "range": false,
-          "expr": "1 - sum(sum_over_time((max by (node) (kube_node_labels{node=~\"box-.*\"}) and on (node) count by (node) (kube_pod_info{namespace=\"tenbox\"} * on (namespace, pod) group_left () (max by (namespace, pod) (kube_pod_status_phase{namespace=\"tenbox\", phase=\"Running\"}) == 1)))[$__range:1m])) / sum(sum_over_time(max by (node) (kube_node_labels{node=~\"box-.*\"})[$__range:1m]))"
+          "expr": "1 - sum(sum_over_time((max by (node) (kube_node_labels{node=~\"box-.*\"}) and on (node) count by (node) (kube_pod_info{namespace=\"tenbox\"} * on (namespace, pod) group_left () (max by (namespace, pod) (kube_pod_status_phase{namespace=\"tenbox\", phase=\"Running\"}) == 1)))[$__range:$__interval])) / sum(sum_over_time(max by (node) (kube_node_labels{node=~\"box-.*\"})[$__range:$__interval]))"
         }
       ],
       "fieldConfig": {
