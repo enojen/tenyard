@@ -496,7 +496,7 @@
     {
       "type": "stat",
       "title": "Machine cost",
-      "description": "The list price of every machine times the minutes it was up, summed; volumes are not in it. The bill counts started hours: see `tenbox-server costs`.",
+      "description": "The list price of every machine and task volume times the minutes it was up, summed. The bill counts started hours: see `tenbox-server costs`.",
       "id": 10,
       "datasource": {
         "type": "prometheus",
@@ -517,7 +517,7 @@
           "refId": "A",
           "instant": true,
           "range": false,
-          "expr": "sum(sum_over_time(tenbox_node_price_eur_hourly[$__range:1m])) / 60"
+          "expr": "(sum(sum_over_time(tenbox_node_price_eur_hourly[$__range:1m])) + (sum(sum_over_time(tenbox_volume_price_eur_hourly[$__range:1m])) or vector(0))) / 60"
         }
       ],
       "fieldConfig": {
@@ -567,7 +567,7 @@
           "refId": "A",
           "instant": true,
           "range": false,
-          "expr": "(sum(sum_over_time(tenbox_node_price_eur_hourly[$__range:1m])) / 60) / (count(count by (label_task) (max_over_time(kube_pod_labels{namespace=\"tenbox\", label_app=\"tenyard\", label_task!=\"\"}[$__range]))))"
+          "expr": "((sum(sum_over_time(tenbox_node_price_eur_hourly[$__range:1m])) + (sum(sum_over_time(tenbox_volume_price_eur_hourly[$__range:1m])) or vector(0))) / 60) / (count(count by (label_task) (max_over_time(kube_pod_labels{namespace=\"tenbox\", label_app=\"tenyard\", label_task!=\"\"}[$__range]))))"
         }
       ],
       "fieldConfig": {
