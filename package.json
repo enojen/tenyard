@@ -1,6 +1,7 @@
 {
   "name": "tenyard",
   "private": true,
+  "license": "FSL-1.1-ALv2",
   "type": "module",
   "devDependencies": {
     "@biomejs/biome": "2.5.15",
