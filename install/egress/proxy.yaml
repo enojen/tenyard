@@ -20,7 +20,7 @@ spec:
       securityContext: { runAsNonRoot: true, fsGroup: 65534, seccompProfile: { type: RuntimeDefault } }
       initContainers:
         - name: injector
-          image: ghcr.io/enojen/tenyard-injector:f42de645013e9021238a4e5219b0598e88e76729@sha256:92fc8f49f626df72b3b8425817d9e75b1713ba9c4e74ae4e9fb783f9d586c213
+          image: ghcr.io/enojen/tenport-injector:2efd83433cccc6cfe4ea7487bdba2ddead48f8fb@sha256:1a4ca2ed8eb1bdd8ad28f8ca84a8936ac8b6d0c166527df8a94d4e571ccb4575
           restartPolicy: Always
           args:
             - --ca-cert
