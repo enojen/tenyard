@@ -607,6 +607,6 @@ hcloud server rebuild --image <snapshot id> <server>
 | Fluent Bit (egress proxy, Tetragon) | 5.1.5 |
 | Tetragon | chart and agent 1.8.0, runtime hook v0.9, `install/tetragon/values.yaml` |
 | kube-state-metrics | v2.20.0 |
-| procs (box sidecar) | `procs/`, image by commit |
+| procs (box sidecar) | enojen/tenport commit and digest, `task/job.yaml` |
 | tenbox server | enojen/tenbox commit and digest, `install/server/server.yaml` |
 | kubectl on the computer | v1.36.5 |

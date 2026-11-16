@@ -50,7 +50,7 @@ only the hosts the log shows.
 
 Squid sends the CONNECT of four credential hosts, `github.com`, `api.github.com`, `api.linear.app`
 and `api.clickup.com`, to the injector (a sidecar in Squid's pod, `install/egress/proxy.yaml`; code
-in `injector/`) on `127.0.0.1:3129` and never straight out, so without the injector these hosts fail. The injector ends the box's TLS
+in enojen/tenport, `crates/injector`) on `127.0.0.1:3129` and never straight out, so without the injector these hosts fail. The injector ends the box's TLS
 with a leaf of its own CA and writes the run's real token in place of the run placeholder
 (`tbxph_...`) in `Authorization`; it asks the tenbox server for that token (`POST /run-credentials`
 with its own token). Any other `Authorization` passes as it is, and it never reads a body. The box
@@ -134,8 +134,8 @@ What the box does with them is the image's business (tenbox `machines/k8s/boot.s
 
 cAdvisor sees a box as one cgroup: claude, the tests, `tsc` and the installs are one number.
 To see which of them uses the CPU and the RAM, every box pod has a second native sidecar,
-`processes`: `procs/`, a small Rust program (one static binary on scratch, image
-`ghcr.io/enojen/tenyard-procs`, pushed by `.github/workflows/procs.yml`), on port 9256. The pod
+`processes`: procs, a small Rust program in enojen/tenport, `crates/procs` (one static binary on
+scratch, image `ghcr.io/enojen/tenport-procs`), on port 9256. The pod
 shares one process namespace (`shareProcessNamespace`), so the sidecar sees the box's processes.
 VictoriaMetrics scrapes it every 10 s (`install/README.md`, "Metrics").
 
@@ -153,7 +153,7 @@ cgroup counts as `anon`. Resident memory (RSS) would count a shared page of a fi
 and its libraries, once in every process: on a `bun test` run the RSS sum was 2.6 times the
 group's real memory. The file cache is not in any group; cAdvisor has it for the pod.
 
-`procs/groups.conf`, inside the image, puts each process into the first group whose rule matches
+`crates/procs/groups.conf` of tenport, inside the image, puts each process into the first group whose rule matches
 its command line. Below a sticky group every descendant stays in it (a whole test run is `test`,
 also the git it calls); below an open group a descendant that matches a rule takes that group,
 and one that matches none stays in its parent's group:
