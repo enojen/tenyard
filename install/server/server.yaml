@@ -39,11 +39,6 @@ rules:
   - apiGroups: [batch]
     resources: [jobs]
     verbs: [get, list, watch]
-  # The task volumes, for the volume events of the cost report (enojen/tenbox#187); delete for
-  # a closed task's volume after its grace period (enojen/tenbox#212).
-  - apiGroups: [""]
-    resources: [persistentvolumeclaims]
-    verbs: [get, list, delete]
   - apiGroups: [""]
     resources: [secrets]
     verbs: [create]
@@ -92,9 +87,6 @@ spec:
           env:
             - name: HCLOUD_TOKEN
               valueFrom: { secretKeyRef: { name: hcloud, key: token } }
-            # Where the idle volume notices go (enojen/tenbox#212); without the Secret, no notice.
-            - name: TENBOX_SERVER_NTFY
-              valueFrom: { secretKeyRef: { name: ntfy, key: url, optional: true } }
             - { name: TENBOX_SERVER_GITHUB_APP_ID, value: "5669876" }
             - { name: TENBOX_SERVER_GITHUB_APP_KEY_FILE, value: /github-app/key.pem }
             - { name: TENBOX_SERVER_RUN_CREDENTIAL_KEY_FILE, value: /run-credentials/key }
