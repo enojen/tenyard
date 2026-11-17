@@ -1,0 +1,62 @@
+# Tenport, the backend that takes over from the tenbox server (enojen/tenport, docs/capabilities.md
+# section 9), in its own namespace, on the server next to the control plane. Its SQLite file sits
+# on a Hetzner volume. The Service is reachable inside the cluster only; people reach Tenport over
+# the tailnet (tailnet.yaml). Its account has no rights yet: the steps that start Jobs and write
+# Secrets give it a Role in namespace tenbox. The first admin: install/README.md, "Tenport".
+apiVersion: v1
+kind: ServiceAccount
+metadata: { name: tenport, namespace: tenport }
+automountServiceAccountToken: false
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata: { name: tenport, namespace: tenport }
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: hcloud-volumes
+  resources: { requests: { storage: 10Gi } }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: tenport, namespace: tenport }
+spec:
+  replicas: 1
+  strategy: { type: Recreate }
+  selector: { matchLabels: { app: tenport } }
+  template:
+    metadata: { labels: { app: tenport } }
+    spec:
+      serviceAccountName: tenport
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      nodeSelector: { node-role.kubernetes.io/control-plane: "true" }
+      tolerations: [{ key: node-role.kubernetes.io/control-plane, operator: Exists, effect: NoSchedule }]
+      securityContext: { runAsUser: 65534, runAsGroup: 65534, runAsNonRoot: true, fsGroup: 65534 }
+      containers:
+        - name: tenport
+          image: ghcr.io/enojen/tenport-server:5eff2b5239e964dd85efc148ffcb201ce4bf18b9@sha256:1cb3867e5c68f7a4b7c3df4f1fbbcb29abd494791f61dc8e7c9eee8a712cdcee
+          ports: [{ containerPort: 8080, name: http }]
+          env:
+            - { name: TENPORT_DATABASE, value: /data/tenport.db }
+            - { name: SQLITE_TMPDIR, value: /tmp }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          resources:
+            requests: { cpu: 10m, memory: 32Mi }
+            limits: { memory: 256Mi }
+          readinessProbe: { httpGet: { path: /health, port: http } }
+          volumeMounts:
+            - { name: data, mountPath: /data }
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - { name: data, persistentVolumeClaim: { claimName: tenport } }
+        - { name: tmp, emptyDir: {} }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: tenport, namespace: tenport }
+spec:
+  selector: { app: tenport }
+  ports: [{ port: 8080, targetPort: http, name: http }]

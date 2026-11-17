@@ -498,6 +498,42 @@ gh api /user/packages/container/tenbox-server/versions -q '.[] | "\(.name) \(.me
 
 Then `kubectl apply -f install/server/server.yaml`.
 
+## Tenport
+
+Tenport (enojen/tenport, image `ghcr.io/enojen/tenport-server`, public) takes over from the
+tenbox server step by step (enojen/tenport, `docs/capabilities.md`, section 9). It runs in
+namespace `tenport` on the server, next to the control plane (`install/tenport/`):
+
+- Its SQLite file is `/data/tenport.db` on a 10 GB Hetzner volume kept with `Retain`. It has no
+  backup yet: the `backup` command comes in a later step, and today it holds only accounts.
+- The Service `tenport:8080` answers inside the cluster only. People reach Tenport at
+  `https://tenport.<tailnet>.ts.net`, from the devices of the tailnet only: a Tailscale node
+  `tenport` like Grafana's (`install/tenport/tailnet.yaml`).
+- It runs as user 65534 with a read-only root file system; its account has no rights and no
+  token yet. The steps that start Jobs and write Secrets give it a Role in namespace `tenbox`.
+
+Once: make a Tailscale auth key (not reusable, not ephemeral, tag `tag:k8s`) as for Grafana, then
+in your own terminal, so the key stays out of any log:
+
+```
+read -rs K; kubectl -n tenport create secret generic tailscale-auth --from-literal=TS_AUTHKEY="$K"; unset K
+kubectl -n tenport delete pod -l app=tailscale-tenport
+kubectl patch pv "$(kubectl -n tenport get pvc tenport -o jsonpath='{.spec.volumeName}')" \
+  -p '{"spec":{"persistentVolumeReclaimPolicy":"Retain"}}'
+```
+
+The first admin, in the pod; the token shows only here, once, so keep it in a password manager
+and use it as `TENPORT_TOKEN`:
+
+```
+kubectl -n tenport exec deploy/tenport -- /tenport user add --name <name> --github <login> --org <org> --role admin
+curl -s https://tenport.<tailnet>.ts.net/me -H "authorization: Bearer $TENPORT_TOKEN"
+```
+
+The image names one commit of enojen/tenport and its digest. A new Tenport is a commit here that
+changes that line; Tenport's `server.yml` pushes every commit with its sha as the tag, and
+`docker buildx imagetools inspect ghcr.io/enojen/tenport-server:<sha>` prints the digest.
+
 ## Backups
 
 The CronJob `offsite-backup` (`install/backup/`) runs at 03:30 UTC on the control-plane server
