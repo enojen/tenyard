@@ -1,0 +1,11 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+configMapGenerator:
+  - name: run-template
+    namespace: tenport
+    files: [job.yaml, classes.yaml]
+    options: { disableNameSuffixHash: true }
+  - name: run-services
+    namespace: tenport
+    files: [services/postgres.yaml]
+    options: { disableNameSuffixHash: true }
