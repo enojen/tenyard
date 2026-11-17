@@ -1,4 +1,4 @@
-# One agent run: one Job, one pod, the task volume on /home/tenbox, the secrets as env.
+# One agent run: one Job, one pod, the task home on /home/tenbox, the secrets as env.
 # The agent fills the __X__ fields. The image reads TENBOX_* and the secrets at boot
 # (tenbox machines/k8s/boot.sh) and ends when its claude session is done.
 apiVersion: batch/v1
@@ -68,6 +68,9 @@ spec:
             - name: TENBOX_ENV
               value: |-
                 __ENV__
+            - { name: TENBOX_ARCHIVE_GET, value: "__ARCHIVE_GET__" }
+            - { name: TENBOX_ARCHIVE_PUT, value: "__ARCHIVE_PUT__" }
+            - { name: TENBOX_SETUP, value: "__SETUP__" }
             - name: GITHUB_TOKEN
               valueFrom: { secretKeyRef: { name: task-__NAME__-__RUN__-github, key: token } }
             - { name: TENBOX_INJECTOR_CA, value: /etc/tenyard/injector/ca.crt }
@@ -85,13 +88,13 @@ spec:
             - { name: DISABLE_ERROR_REPORTING, value: "1" }
           # The resource class from classes.yaml.
           resources:
-            requests: { cpu: __CPU__, memory: __MEMORY__, ephemeral-storage: 256Mi }
-            limits: { memory: __MEMORY__, ephemeral-storage: 4Gi }
+            requests: { cpu: __CPU__, memory: __MEMORY__, ephemeral-storage: 1Gi }
+            limits: { memory: __MEMORY__, ephemeral-storage: 12Gi }
           volumeMounts:
             - { name: home, mountPath: /home/tenbox }
             - { name: injector-ca, mountPath: /etc/tenyard/injector, readOnly: true }
       volumes:
         - name: home
-          persistentVolumeClaim: { claimName: task-__NAME__ }
+          emptyDir: { sizeLimit: 8Gi }
         - name: injector-ca
           configMap: { name: injector-ca }

@@ -19,8 +19,8 @@ Fly CPU a 20 minute build got about one fifteenth of a core. Here a box asks for
 half of a core with no limit, so the boxes share a node and the one that runs its tests takes
 every idle core. One cx33 node (4 vCPU, 8 GB, about 10 EUR a month) carries four to six agents.
 
-**One box per task, and nothing left over.** A run is a Job on the task's volume: the next run
-continues where the last one stopped. A box that fits on no worker makes the autoscaler add one
+**One box per task, and nothing left over.** A run is a Job; the task's home goes to a bucket
+at its end, so the next run continues where the last one stopped. A box that fits on no worker makes the autoscaler add one
 (about 2 minutes, 20 s on a warm one); a worker with no box goes after 50 minutes.
 
 **The whole platform in git.** OpenTofu holds the Hetzner side, Flux applies `main` to the
@@ -32,9 +32,9 @@ Hetzner project was rebuilt from git, the age key and the backups in 13 minutes.
 
 ```
 tenbox machine run TEN-1 -- tenbox build TEN-1
- └─ a Job and the task's volume: the box image, one command, a resource class
+ └─ a Job: the box image, one command, a resource class, the task's home from the bucket
      └─ no room on a worker: the autoscaler adds one, it joins in about a minute
-         └─ the box opens the task, runs the command and ends; the volume stays
+         └─ the box opens the task, runs the command, saves the home and ends
 ```
 
 ```sh

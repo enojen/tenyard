@@ -5,11 +5,20 @@ cluster is built, run and rebuilt; `docs/numbers.md` holds the measurements.
 
 ## One run: `task/`
 
-One agent run is one Job: the box image, one tenbox command, the task's volume on
-`/home/tenbox`, the secrets as env. The volume outlives the pod, so the next run of the task
-continues from it; the pod ends when the command and the claude session it left behind are
-done. The agent fills the `__X__` fields of `task/pvc.yaml` and `task/job.yaml` and posts
-both to the cluster API; the volume is kept when it exists. Tenbox does it with
+One agent run is one Job: the box image, one tenbox command, the task's home on
+`/home/tenbox` (an `emptyDir` of at most 8 GiB on the node's disk), the secrets as env. The box
+downloads the task archive from the bucket at boot and uploads the home at its end, without
+`node_modules` and the package caches, so the next run of the task continues from it; the pod
+ends when the command and the claude session it left behind are done. The agent fills the
+`__X__` fields of `task/job.yaml`, with two presigned URLs of the task's archive
+(`__ARCHIVE_GET__`, `__ARCHIVE_PUT__`) and the project's `setup` (`__SETUP__`), and posts it to the
+cluster API; the bucket key stays with the agent. The archives live in the bucket
+`tenbox-enojen` under `tasks/<project id>/<task>.tar.zst`, and a rule deletes an archive 30 days
+after its last upload (S3 `PUT /tenbox-enojen?lifecycle`, `Filter: Prefix tasks/`,
+`Expiration: Days 30`), so a task that is never closed leaves nothing behind for long. The agent's
+computer needs `TENBOX_BUCKET=https://hel1.your-objectstorage.com/tenbox-enojen`,
+`TENBOX_BUCKET_REGION=hel1`, and the keys of `tenbox-server/backup-bucket` as `TENBOX_BUCKET_KEY`
+and `TENBOX_BUCKET_SECRET`. Tenbox does it with
 `tenbox machine run` (tenbox `docs/reference.md`, "Machines"):
 
 ```
@@ -96,7 +105,7 @@ The box logs that peak as its last line, `tenbox-boot: memory peak <MiB> MiB, cp
 (below), that project's whole check chain peaks at about 2.3 GB, so `heavy` is 3Gi.
 
 `install/cluster/limitrange.yaml` gives a container that names no resources, such as a pod made by
-hand on a task volume, the `plan` class, without a CPU limit too.
+hand, the `plan` class, without a CPU limit too.
 
 ### Services
 
