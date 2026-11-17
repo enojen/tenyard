@@ -38,7 +38,11 @@ spec:
 ---
 apiVersion: apps/v1
 kind: Deployment
-metadata: { name: tenport, namespace: tenport }
+metadata:
+  name: tenport
+  namespace: tenport
+  annotations:
+    ignore-check.kube-linter.io/env-var-secret: "TENPORT_TASK_ARCHIVE_BUCKET_SECRET_FILE is the path of a mounted Secret file, not the secret"
 spec:
   replicas: 1
   strategy: { type: Recreate }
@@ -54,11 +58,15 @@ spec:
       securityContext: { runAsUser: 65534, runAsGroup: 65534, runAsNonRoot: true, fsGroup: 65534 }
       containers:
         - name: tenport
-          image: ghcr.io/enojen/tenport-server:f7c6055714ec32ca7c0e49bb7ec7770a7e073842@sha256:8d9e2c3a6b352c036087495b5df79bc1c6e8c0196090511ae23731f00b22e318
+          image: ghcr.io/enojen/tenport-server:ed0ab6bac059f33ed6ef9f3b16ff9967b8c7cdc3@sha256:4e6ac1b432c7ae3d2a5ee59120cb86e16a75ea8440942a3c465878031e4e6d8b
           ports: [{ containerPort: 8080, name: http }]
           env:
             - { name: TENPORT_DATABASE, value: /data/tenport.db }
             - { name: SQLITE_TMPDIR, value: /tmp }
+            - { name: TENPORT_TASK_ARCHIVE_BUCKET, value: "https://hel1.your-objectstorage.com/tenbox-enojen" }
+            - { name: TENPORT_TASK_ARCHIVE_BUCKET_REGION, value: hel1 }
+            - { name: TENPORT_TASK_ARCHIVE_BUCKET_KEY_FILE, value: /task-archive-bucket/access_key }
+            - { name: TENPORT_TASK_ARCHIVE_BUCKET_SECRET_FILE, value: /task-archive-bucket/secret_key }
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -72,11 +80,13 @@ spec:
             - { name: tmp, mountPath: /tmp }
             - { name: run-template, mountPath: /etc/tenport/run-template, readOnly: true }
             - { name: run-services, mountPath: /etc/tenport/run-services, readOnly: true }
+            - { name: task-archive-bucket, mountPath: /task-archive-bucket, readOnly: true }
       volumes:
         - { name: data, persistentVolumeClaim: { claimName: tenport } }
         - { name: tmp, emptyDir: {} }
         - { name: run-template, configMap: { name: run-template } }
         - { name: run-services, configMap: { name: run-services } }
+        - { name: task-archive-bucket, secret: { secretName: task-archive-bucket, defaultMode: 0440 } }
 ---
 apiVersion: v1
 kind: Service
