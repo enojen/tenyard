@@ -12,7 +12,7 @@ runcmd:
     iface="$(ip -4 -o addr | awk '/inet 10\.1\.0\.2\// { print $2 }')";
     public_ip="$(curl -sf http://169.254.169.254/hetzner/v1/metadata/public-ipv4)";
     curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION=v1.36.5+k3s1
-    INSTALL_K3S_EXEC="server --tls-san $public_ip --disable traefik
+    INSTALL_K3S_EXEC="server --tls-san $public_ip --disable traefik --secrets-encryption
     --kubelet-arg=system-reserved=cpu=1,memory=1.5Gi
     --node-ip 10.1.0.2 --advertise-address 10.1.0.2 --flannel-iface $iface
     --disable-cloud-controller --kubelet-arg=cloud-provider=external

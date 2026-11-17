@@ -130,6 +130,7 @@ All commands run on the server as root, except where noted.
    curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="server \
      --tls-san <public ip> \
      --disable traefik \
+     --secrets-encryption \
      --kubelet-arg=system-reserved=cpu=1,memory=1.5Gi" sh -
    ```
 
@@ -235,7 +236,7 @@ From your computer, once, on a server set up with the steps above:
     ```
     k3s kubectl -n kube-system patch secret hcloud -p '{"stringData":{"network":"tenyard-net"}}'
     curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION=v1.36.5+k3s1 INSTALL_K3S_SKIP_START=true \
-      INSTALL_K3S_EXEC="server --tls-san <public ip> --disable traefik \
+      INSTALL_K3S_EXEC="server --tls-san <public ip> --disable traefik --secrets-encryption \
         --kubelet-arg=system-reserved=cpu=1,memory=1.5Gi \
         --node-ip 10.1.0.2 --advertise-address 10.1.0.2 --flannel-iface enp7s0 \
         --disable-cloud-controller --kubelet-arg=cloud-provider=external" sh -
@@ -541,8 +542,9 @@ and puts two files in the bucket `tenyard-backups` of Hetzner Object Storage (he
 encrypted with age to the key of Tenyard:
 
 - `k3s/k3s-<day>.tar.gz.age`: the k3s datastore, an online SQLite backup of
-  `/var/lib/rancher/k3s/server/db/state.db`, and the server token next to it, which decrypts
-  the bootstrap data in the datastore. The datastore holds every Secret in plain text.
+  `/var/lib/rancher/k3s/server/db/state.db`, the server token next to it, which decrypts
+  the bootstrap data in the datastore, and `encryption-config.json`, the key of the Secrets in
+  the datastore ("Secrets encryption"). Without that key no Secret of the copy can be read.
 - `server/server-<day>.db.gz.age`: that day's copy of the tenbox server's database, from the
   CronJob `backup` at 03:00.
 
@@ -554,6 +556,49 @@ The bucket was made once, private, with its expiry rule (S3 `PUT /tenyard-backup
 `tools/check-backup.sh [<day>]` downloads the files of a day and decrypts them in RAM, in a
 container with no network: it prints the integrity check of both databases and a few counts.
 The first run, 2026-11-07: `k3s 726 KB, server 61 KB`, both `ok`.
+
+## Secrets encryption
+
+k3s writes each Secret to its datastore encrypted with AES-CBC (`--secrets-encryption`). The
+key is `/var/lib/rancher/k3s/server/cred/encryption-config.json` on the control-plane server;
+the daily backup keeps it next to the datastore ("Backups").
+
+What it protects: a copy of `state.db` alone, such as a stray backup or a debug copy, shows no
+Secret. What it does not protect: root on the server reads the key as well, and a snapshot of
+the server's disk holds both. Step 4 of Tenport's move puts the tracker keys of the projects in
+Secrets; this keeps them out of a copy of the datastore.
+
+`tools/check-backup.sh` prints `k3s secrets encrypted: <n> of <all>`, read from a day's backup.
+
+A new server gets the flag at install (`infra/control-plane.yaml`, steps 2 and 11). The server
+of 2026-11 was installed without it and gets it once, on the server, by the steps of the k3s
+docs for one server (`k3s secrets-encrypt`, k3s v1.35.3 and later). The API answers nothing
+during the two restarts, a few seconds each; pods keep running.
+
+1. A snapshot of the server, for a rollback (from your computer):
+
+   ```
+   hcloud server create-image --type snapshot --description "before secrets encryption" <server>
+   ```
+
+2. On the server:
+
+   ```
+   k3s secrets-encrypt status      # Encryption Status: Disabled, no configuration file found
+   k3s secrets-encrypt enable
+   echo 'secrets-encryption: true' >> /etc/rancher/k3s/config.yaml
+   systemctl restart k3s
+   k3s secrets-encrypt status      # Disabled, Current Rotation Stage: start
+   k3s secrets-encrypt rotate-keys
+   systemctl restart k3s
+   k3s secrets-encrypt status      # Enabled, Current Rotation Stage: reencrypt_finished
+   ```
+
+3. Merge the backup change, so the next backup takes the key, and run it once at once
+   (`kubectl -n tenbox-server create job --from=cronjob/offsite-backup backup-now`). Then
+   `tools/check-backup.sh` shows every Secret encrypted.
+
+Changing the key later is `k3s secrets-encrypt rotate-keys` and one restart; not planned now.
 
 ## Rebuild
 
@@ -574,6 +619,7 @@ mkdir -p /var/lib/rancher/k3s/server/db && chmod 700 /var/lib/rancher/k3s/server
 #     age -d -i /key < k3s-<day>.tar.gz.age \
 #     | ssh root@<server> 'mkdir -p /root/restore && tar -xz -C /root/restore'
 cp /root/restore/state.db /var/lib/rancher/k3s/server/db/ && cp /root/restore/token /var/lib/rancher/k3s/server/
+mkdir -p /var/lib/rancher/k3s/server/cred && cp /root/restore/encryption-config.json /var/lib/rancher/k3s/server/cred/
 systemctl start k3s
 ```
 
