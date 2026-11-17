@@ -75,8 +75,8 @@ data:
         scrape_interval: 10s
         kubernetes_sd_configs: [{ role: pod, namespaces: { names: [tenbox] } }]
         relabel_configs:
-          - source_labels: [__meta_kubernetes_pod_label_app, __meta_kubernetes_pod_container_port_name]
-            regex: tenyard;process-metrics
+          - source_labels: [__meta_kubernetes_pod_label_box, __meta_kubernetes_pod_container_port_name]
+            regex: true;process-metrics
             action: keep
           - source_labels: [__meta_kubernetes_pod_phase]
             regex: Running
