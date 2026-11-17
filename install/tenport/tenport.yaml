@@ -18,6 +18,9 @@ rules:
   - apiGroups: [""]
     resources: [pods, pods/log]
     verbs: [get, list]
+  - apiGroups: [""]
+    resources: [secrets]
+    verbs: [get, create, patch]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -51,7 +54,7 @@ spec:
       securityContext: { runAsUser: 65534, runAsGroup: 65534, runAsNonRoot: true, fsGroup: 65534 }
       containers:
         - name: tenport
-          image: ghcr.io/enojen/tenport-server:07522420fe8402af6db1e5d07ef1df90d69857c7@sha256:3fce5d58de59c51c58d8775d606812f99b456ad126456742a8fdc444fad5cfa1
+          image: ghcr.io/enojen/tenport-server:f7c6055714ec32ca7c0e49bb7ec7770a7e073842@sha256:8d9e2c3a6b352c036087495b5df79bc1c6e8c0196090511ae23731f00b22e318
           ports: [{ containerPort: 8080, name: http }]
           env:
             - { name: TENPORT_DATABASE, value: /data/tenport.db }
