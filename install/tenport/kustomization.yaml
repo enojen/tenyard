@@ -1,0 +1,5 @@
+# Tenport (enojen/tenport, image ghcr.io/enojen/tenport-server), its database volume and its
+# Tailscale node.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources: [tenport.yaml, tailnet.yaml]

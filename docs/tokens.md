@@ -24,6 +24,8 @@ means a new token for every row marked "git".
 | `kube-system/tenyard-autoscaler` | the k3s join token (joins workers only) and the worker cloud-init | `k3s token create` on the server | `install/autoscaler/autoscaler.sh` writes it; it was left out of #68 |
 | `monitoring/tailscale-auth` | a Tailscale auth key, used once | Tailscale admin console | by hand; can be deleted after the first start |
 | `monitoring/tailscale-grafana` | the Tailscale node key, written by the node itself | | the cluster only |
+| `tenport/tailscale-auth` | a Tailscale auth key, used once | Tailscale admin console | by hand; can be deleted after the first start |
+| `tenport/tailscale-tenport` | the Tailscale node key of `tenport`, written by the node itself | | the cluster only |
 
 Outside the cluster:
 
@@ -31,3 +33,4 @@ Outside the cluster:
 |---|---|---|
 | the age key of Tenyard (`~/.config/tenyard/age.key`) | decrypts everything in `secrets/` | the computer and a password manager; never git |
 | the kubeconfig (`~/.kube/tenyard.yaml`) | admin of the cluster | the computer |
+| a Tenport user token (`tbx_...`) | everything its user may do in Tenport: as an organization admin, add projects and send events | printed once by `tenport user add`; Tenport keeps only its hash | the user's password manager, and `TENPORT_TOKEN` on the computer |

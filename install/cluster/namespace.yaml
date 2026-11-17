@@ -15,6 +15,13 @@ metadata:
   name: tenbox-server
   annotations: { kustomize.toolkit.fluxcd.io/prune: disabled }
 ---
+# Tenport, its database volume and its Tailscale node (install/tenport).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tenport
+  annotations: { kustomize.toolkit.fluxcd.io/prune: disabled }
+---
 # VictoriaMetrics, kube-state-metrics and Grafana (install/monitoring).
 apiVersion: v1
 kind: Namespace
