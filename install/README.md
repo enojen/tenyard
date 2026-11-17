@@ -287,9 +287,8 @@ control plane (`install/monitoring/monitoring.yaml`). It scrapes every 30 s:
   cAdvisor has hundreds more.
 - the tenbox server's `/metrics`: `tenbox_node_price_eur_hourly{node, server_type, location}`, the
   hourly list price of each server of the cluster that is up, the control plane too, from its
-  `node.added` (enojen/tenbox#198), and `tenbox_volume_price_eur_hourly{volume, task, size_gb}`,
-  that of each task volume, from its `volume.added` (enojen/tenbox#294). The exact paid euros stay
-  in the server's cost report, which counts started hours.
+  `node.added` (enojen/tenbox#198). The exact paid euros stay in the server's cost report, which
+  counts started hours.
 - the `processes` sidecar of each running box pod, every 10 s, from the pod IP: CPU, anonymous
   memory and process count per process group inside the box, with the pod's `task`, `project`,
   `command` and `class` (README, "Process metrics"). A Role in namespace `tenbox` lets
@@ -461,14 +460,11 @@ runs in namespace `tenbox-server` on the server, next to the control plane
   `offsite-backup` copies the newest one off the host ("Backups").
 - The Service `tenbox-server:4300` answers inside the cluster only; tokens travel over plain
   HTTP until TLS.
-- Its account reads nodes, and pods, their logs, Jobs and volume claims of namespace `tenbox`,
-  to record workers, machine runs and task volumes: the box's last log line counts the
-  processes killed by OOM inside a container that lived on. It reads no Secret; it creates the
-  run placeholder Secret of each open Job (`task-<name>-<run>-github`). It deletes one thing:
-  the volume claim of a task whose `tenbox close` ended with exit code 0, 3 days after the close
-  (`TENBOX_SERVER_VOLUME_GRACE_DAYS`; enojen/tenbox#212).
-- `TENBOX_SERVER_NTFY` from the Secret `ntfy` (key `url`, optional): the ntfy topic URL for the
-  notice about an open task's volume with no run for 7 days. Without the Secret no notice goes.
+- Its account reads nodes, and pods, their logs and Jobs of namespace `tenbox`, to record
+  workers and machine runs: the box's last log line counts the processes killed by OOM inside a
+  container that lived on. It reads no Secret and deletes nothing; it creates the run
+  placeholder Secret of each open Job (`task-<name>-<run>-github`). A task has no volume since
+  enojen/tenbox#313, so the server watches none (enojen/tenbox#314).
 - `TENBOX_SERVER_RUN_CREDENTIAL_KEY_FILE` and `TENBOX_SERVER_INJECTOR_TOKEN_FILE` from the
   Secret `run-credentials` (keys `key` and `injector-token`): the key of the run placeholders and
   the injector's token. With the GitHub App set, the server does not start without them.
