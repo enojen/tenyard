@@ -413,7 +413,7 @@ processes of a box do: every exec and exit (binary, arguments, parent, uid, time
 TCP connection (policy `box-connect`), every open of a login file (`.claude/.credentials.json`,
 `.config/gh/hosts.yml`, `tenbox.local.yaml`) and every write under `/etc`, `/usr` or `/opt`
 (`box-files`). The policies are `TracingPolicyNamespaced` objects of namespace `tenbox` for pods
-labeled `app=tenyard`; they record and never block. A process in a box cannot stop the agent or
+labeled `box=true`; they record and never block. A process in a box cannot stop the agent or
 change what it wrote.
 
 The agent runs on the workers only (the control-plane taint keeps it off) and writes the events

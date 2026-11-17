@@ -2,7 +2,7 @@ apiVersion: cilium.io/v1alpha1
 kind: TracingPolicyNamespaced
 metadata: { name: box-connect, namespace: tenbox }
 spec:
-  podSelector: { matchLabels: { app: tenyard } }
+  podSelector: { matchLabels: { box: "true" } }
   kprobes:
     - call: tcp_connect
       syscall: false
@@ -12,7 +12,7 @@ apiVersion: cilium.io/v1alpha1
 kind: TracingPolicyNamespaced
 metadata: { name: box-files, namespace: tenbox }
 spec:
-  podSelector: { matchLabels: { app: tenyard } }
+  podSelector: { matchLabels: { box: "true" } }
   kprobes:
     - call: security_file_open
       syscall: false
