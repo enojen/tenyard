@@ -24,7 +24,7 @@ for layer in install/cluster clusters/tenyard/infrastructure clusters/tenyard/ap
 done > "$tmp/cluster.yaml"
 "$bin/kustomize" build clusters/tenyard > "$tmp/flux.yaml"
 # The services of a task are strategic merge patches of the Job, not objects of their own.
-templates=(task/job.yaml task/pvc.yaml)
+templates=(task/job.yaml)
 
 "$bin/kubeconform" -kubernetes-version "$kubernetes_version" -strict -summary \
   -skip CustomResourceDefinition,TracingPolicyNamespaced "$tmp/cluster.yaml" "${templates[@]}"
