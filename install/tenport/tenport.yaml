@@ -1,12 +1,29 @@
 # Tenport, the backend that takes over from the tenbox server (enojen/tenport, docs/capabilities.md
 # section 9), in its own namespace, on the server next to the control plane. Its SQLite file sits
 # on a Hetzner volume. The Service is reachable inside the cluster only; people reach Tenport over
-# the tailnet (tailnet.yaml). Its account has no rights yet: the steps that start Jobs and write
-# Secrets give it a Role in namespace tenbox. The first admin: install/README.md, "Tenport".
+# the tailnet (tailnet.yaml). Its account may start, read and delete the Jobs of namespace tenbox,
+# from the Job template of task/. The first admin: install/README.md, "Tenport".
 apiVersion: v1
 kind: ServiceAccount
 metadata: { name: tenport, namespace: tenport }
 automountServiceAccountToken: false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata: { name: tenport-runs, namespace: tenbox }
+rules:
+  - apiGroups: [batch]
+    resources: [jobs]
+    verbs: [create, get, list, delete]
+  - apiGroups: [""]
+    resources: [pods, pods/log]
+    verbs: [get, list]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata: { name: tenport-runs, namespace: tenbox }
+roleRef: { apiGroup: rbac.authorization.k8s.io, kind: Role, name: tenport-runs }
+subjects: [{ kind: ServiceAccount, name: tenport, namespace: tenport }]
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -27,7 +44,7 @@ spec:
     metadata: { labels: { app: tenport } }
     spec:
       serviceAccountName: tenport
-      automountServiceAccountToken: false
+      automountServiceAccountToken: true
       enableServiceLinks: false
       nodeSelector: { node-role.kubernetes.io/control-plane: "true" }
       tolerations: [{ key: node-role.kubernetes.io/control-plane, operator: Exists, effect: NoSchedule }]
@@ -50,9 +67,13 @@ spec:
           volumeMounts:
             - { name: data, mountPath: /data }
             - { name: tmp, mountPath: /tmp }
+            - { name: run-template, mountPath: /etc/tenport/run-template, readOnly: true }
+            - { name: run-services, mountPath: /etc/tenport/run-services, readOnly: true }
       volumes:
         - { name: data, persistentVolumeClaim: { claimName: tenport } }
         - { name: tmp, emptyDir: {} }
+        - { name: run-template, configMap: { name: run-template } }
+        - { name: run-services, configMap: { name: run-services } }
 ---
 apiVersion: v1
 kind: Service
