@@ -40,6 +40,8 @@ echo "k3s token: $(wc -c < token) bytes"
 check="$(sqlite3 state.db 'PRAGMA integrity_check')"; echo "k3s integrity: $check"; [ "$check" = ok ]
 echo "k3s rows: $(sqlite3 state.db 'SELECT count(*) FROM kine')"
 echo "k3s secrets: $(sqlite3 state.db "SELECT count(DISTINCT name) FROM kine WHERE name LIKE '/registry/secrets/%'")"
+echo "k3s secrets encrypted: $(sqlite3 state.db "SELECT sum(substr(value, 1, 8) = CAST('k8s:enc:' AS BLOB)) || ' of ' || count(*) FROM kine AS row WHERE name LIKE '/registry/secrets/%' AND deleted = 0 AND id = (SELECT max(id) FROM kine WHERE name = row.name)")"
+if [ -f encryption-config.json ]; then echo "k3s encryption key: $(wc -c < encryption-config.json) bytes"; else echo "k3s encryption key: not in this backup"; fi
 age -d -i /key "/backups/server-$DAY.db.gz.age" | gunzip > server.db
 check="$(sqlite3 server.db 'PRAGMA integrity_check')"; echo "server integrity: $check"; [ "$check" = ok ]
 echo "server tables: $(sqlite3 server.db "SELECT group_concat(name, ' ') FROM sqlite_master WHERE type = 'table'")"

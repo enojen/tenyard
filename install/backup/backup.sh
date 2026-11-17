@@ -1,9 +1,10 @@
 #!/bin/sh
 # The daily copy off the host (install/README.md, "Backups"), run by the CronJob
 # offsite-backup on the control-plane server. Two files go to the bucket, each encrypted with
-# age to the key of Tenyard, as both hold every Secret of the cluster in plain text:
-#   k3s/k3s-<day>.tar.gz.age        the k3s datastore (an online SQLite backup) and the server
-#                                   token, which decrypts the bootstrap data in it
+# age to the key of Tenyard, as both hold Secrets of the cluster or the key to read them:
+#   k3s/k3s-<day>.tar.gz.age        the k3s datastore (an online SQLite backup), the server
+#                                   token, which decrypts the bootstrap data in it, and the
+#                                   key of the Secrets in it (encryption-config.json)
 #   server/server-<day>.db.gz.age   the newest daily copy of the tenbox server's database
 # The bucket deletes a file after 30 days. On a failure it sends one ntfy notice.
 set -eu
@@ -38,7 +39,8 @@ sqlite3 /k3s/db/state.db ".backup '$work/k3s/state.db'"
 check="$(sqlite3 "$work/k3s/state.db" 'PRAGMA integrity_check')"
 [ "$check" = ok ] || { echo "integrity check of the copy: $check" >&2; exit 1; }
 cp /k3s/token "$work/k3s/token"
-tar -czf "$work/k3s.tar.gz" -C "$work/k3s" state.db token
+cp /k3s/encryption-config.json "$work/k3s/encryption-config.json"
+tar -czf "$work/k3s.tar.gz" -C "$work/k3s" state.db token encryption-config.json
 age -r "$AGE_RECIPIENT" -o "$work/k3s.tar.gz.age" "$work/k3s.tar.gz"
 upload "$work/k3s.tar.gz.age" "k3s/k3s-$day.tar.gz.age"
 

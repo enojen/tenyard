@@ -46,6 +46,7 @@ spec:
                 - { name: script, mountPath: /script, readOnly: true }
                 - { name: k3s-db, mountPath: /k3s/db }
                 - { name: k3s-token, mountPath: /k3s/token, readOnly: true }
+                - { name: k3s-encryption, mountPath: /k3s/encryption-config.json, readOnly: true }
                 - { name: server, mountPath: /server, readOnly: true }
                 - { name: bucket, mountPath: /bucket, readOnly: true }
                 - { name: ntfy, mountPath: /ntfy, readOnly: true }
@@ -53,6 +54,7 @@ spec:
             - { name: script, configMap: { name: backup-script } }
             - { name: k3s-db, hostPath: { path: /var/lib/rancher/k3s/server/db, type: Directory } }
             - { name: k3s-token, hostPath: { path: /var/lib/rancher/k3s/server/token, type: File } }
+            - { name: k3s-encryption, hostPath: { path: /var/lib/rancher/k3s/server/cred/encryption-config.json, type: File } }
             - { name: server, persistentVolumeClaim: { claimName: tenbox-server } }
             - { name: bucket, secret: { secretName: backup-bucket } }
             - { name: ntfy, secret: { secretName: ntfy } }
