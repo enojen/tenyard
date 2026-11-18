@@ -382,8 +382,10 @@ sidecar: Squid starts once the injector listens, and reaches it on `127.0.0.1:31
 stops after Squid. It runs as a non-root user with a read-only root file system;
 `docs/reference.md` says what it does. Its CA
 certificate is `install/egress/injector-ca.crt` (public, in git); the CA key and the injector's
-token for the server are the Secret `egress/injector`, the same token and the key of the run
-placeholders `tenbox-server/run-credentials`. A new CA, valid 5 years, for the four credential
+token for Tenport are the Secret `egress/injector`, the token the same as the `injector-token` of
+`tenport/run-credentials`. The injector asks Tenport since tenyard #131, so a Job of
+`tenbox machine run`, whose placeholder the tenbox server writes, has no GitHub until the CLI
+starts its runs through Tenport (enojen/tenport, `docs/capabilities.md`, section 9, step 6). A new CA, valid 5 years, for the four credential
 hosts:
 
 ```
@@ -510,8 +512,12 @@ namespace `tenport` on the server, next to the control plane (`install/tenport/`
 - The Service `tenport:8080` answers inside the cluster only. People reach Tenport at
   `https://tenport.<tailnet>.ts.net`, from the devices of the tailnet only: a Tailscale node
   `tenport` like Grafana's (`install/tenport/tailnet.yaml`).
-- It runs as user 65534 with a read-only root file system; its account has no rights and no
-  token yet. The steps that start Jobs and write Secrets give it a Role in namespace `tenbox`.
+- It runs as user 65534 with a read-only root file system. Its Role in namespace `tenbox`
+  starts the Jobs and writes their Secrets.
+- It does not start without its keys, each a Secret of `secrets/tenport/` mounted as a file:
+  the task archive bucket (`task-archive-bucket`), the key of the run placeholders and the
+  injector token (`run-credentials`), and the GitHub App key (`github-app`, the key of
+  `tenbox-server/github-app`). `docs/tokens.md` says what each can do.
 
 Once: make a Tailscale auth key (not reusable, not ephemeral, tag `tag:k8s`) as for Grafana, then
 in your own terminal, so the key stays out of any log:
