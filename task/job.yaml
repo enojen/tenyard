@@ -72,7 +72,7 @@ spec:
             - { name: TENBOX_ARCHIVE_PUT, value: "__ARCHIVE_PUT__" }
             - { name: TENBOX_SETUP, value: "__SETUP__" }
             - name: GITHUB_TOKEN
-              valueFrom: { secretKeyRef: { name: task-__NAME__-__RUN__-github, key: token } }
+              valueFrom: { secretKeyRef: { name: task-__NAME__-__RUN__-placeholder, key: placeholder } }
             - { name: TENBOX_INJECTOR_CA, value: /etc/tenyard/injector/ca.crt }
             - name: CLAUDE_CREDENTIALS
               valueFrom: { secretKeyRef: { name: claude-credentials, key: credentials.json } }
