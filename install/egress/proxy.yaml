@@ -36,7 +36,7 @@ spec:
             - --host
             - api.clickup.com
             - --server
-            - http://tenbox-server.tenbox-server.svc.cluster.local:4300/run-credentials
+            - http://tenport.tenport.svc.cluster.local:8080/run-credentials
             - --server-token
             - /secret/token
           ports: [{ containerPort: 3129, name: injector }]
@@ -120,9 +120,9 @@ spec:
           podSelector: { matchLabels: { app: victoria-logs } }
       ports: [{ protocol: TCP, port: 9428 }]
     - to:
-        - namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: tenbox-server } }
-          podSelector: { matchLabels: { app: tenbox-server } }
-      ports: [{ protocol: TCP, port: 4300 }]
+        - namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: tenport } }
+          podSelector: { matchLabels: { app: tenport } }
+      ports: [{ protocol: TCP, port: 8080 }]
     - to:
         - ipBlock:
             cidr: 0.0.0.0/0

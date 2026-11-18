@@ -42,7 +42,7 @@ metadata:
   name: tenport
   namespace: tenport
   annotations:
-    ignore-check.kube-linter.io/env-var-secret: "TENPORT_TASK_ARCHIVE_BUCKET_SECRET_FILE is the path of a mounted Secret file, not the secret"
+    ignore-check.kube-linter.io/env-var-secret: "each *_FILE env is the path of a mounted Secret file, not the secret"
 spec:
   replicas: 1
   strategy: { type: Recreate }
@@ -58,7 +58,7 @@ spec:
       securityContext: { runAsUser: 65534, runAsGroup: 65534, runAsNonRoot: true, fsGroup: 65534 }
       containers:
         - name: tenport
-          image: ghcr.io/enojen/tenport-server:f9515b8d786770f16941d5923f4e3f3a3535e6fa@sha256:2efb1e60c23e9eb7f6cb4b5a6b2f19170ff554ca899688951e4470cac1ba9dc6
+          image: ghcr.io/enojen/tenport-server:59eb6df899cce7f54d4c19af81c62b13d13caa9f@sha256:200a715a7dbed85ddba546b9ea6411e7efd539dc7deafb43ff5e6801a10d2d46
           ports: [{ containerPort: 8080, name: http }]
           env:
             - { name: TENPORT_DATABASE, value: /data/tenport.db }
@@ -67,6 +67,10 @@ spec:
             - { name: TENPORT_TASK_ARCHIVE_BUCKET_REGION, value: hel1 }
             - { name: TENPORT_TASK_ARCHIVE_BUCKET_KEY_FILE, value: /task-archive-bucket/access_key }
             - { name: TENPORT_TASK_ARCHIVE_BUCKET_SECRET_FILE, value: /task-archive-bucket/secret_key }
+            - { name: TENPORT_RUN_CREDENTIAL_KEY_FILE, value: /run-credentials/key }
+            - { name: TENPORT_INJECTOR_TOKEN_FILE, value: /run-credentials/injector-token }
+            - { name: TENPORT_GITHUB_APP_ID, value: "5669876" }
+            - { name: TENPORT_GITHUB_APP_KEY_FILE, value: /github-app/key.pem }
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -81,12 +85,16 @@ spec:
             - { name: run-template, mountPath: /etc/tenport/run-template, readOnly: true }
             - { name: run-services, mountPath: /etc/tenport/run-services, readOnly: true }
             - { name: task-archive-bucket, mountPath: /task-archive-bucket, readOnly: true }
+            - { name: run-credentials, mountPath: /run-credentials, readOnly: true }
+            - { name: github-app, mountPath: /github-app, readOnly: true }
       volumes:
         - { name: data, persistentVolumeClaim: { claimName: tenport } }
         - { name: tmp, emptyDir: {} }
         - { name: run-template, configMap: { name: run-template } }
         - { name: run-services, configMap: { name: run-services } }
         - { name: task-archive-bucket, secret: { secretName: task-archive-bucket, defaultMode: 0440 } }
+        - { name: run-credentials, secret: { secretName: run-credentials, defaultMode: 0440 } }
+        - { name: github-app, secret: { secretName: github-app, defaultMode: 0440 } }
 ---
 apiVersion: v1
 kind: Service
