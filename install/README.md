@@ -466,7 +466,7 @@ runs in namespace `tenbox-server` on the server, next to the control plane
 - Its account reads nodes, and pods, their logs and Jobs of namespace `tenbox`, to record
   workers and machine runs: the box's last log line counts the processes killed by OOM inside a
   container that lived on. It reads no Secret and deletes nothing; it creates the run
-  placeholder Secret of each open Job (`task-<name>-<run>-github`). A task has no volume since
+  placeholder Secret of each open Job (`task-<name>-<run>-placeholder`). A task has no volume since
   enojen/tenbox#313, so the server watches none (enojen/tenbox#314).
 - `TENBOX_SERVER_RUN_CREDENTIAL_KEY_FILE` and `TENBOX_SERVER_INJECTOR_TOKEN_FILE` from the
   Secret `run-credentials` (keys `key` and `injector-token`): the key of the run placeholders and

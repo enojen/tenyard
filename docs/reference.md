@@ -134,7 +134,7 @@ from `install/egress/injector-ca.crt`:
 | Secret | Key | What |
 |---|---|---|
 | `ghcr` | `.dockerconfigjson` | pull secret of the private image (a GitHub token with `read:packages`) |
-| `task-<name>-<run>-github` | `token` | the run placeholder, `tbxph_` and an HMAC of the Job's uid: the injector writes the run token in its place, a GitHub App token for the repository of the Job's project only (contents, pull requests and issues write), one hour long. Empty when the App is not installed there, and the box then stops at start. The pod waits until Tenport writes it; the Job owns it, so it goes with the Job. The Job carries the label `project-id` for it |
+| `task-<name>-<run>-placeholder` | `placeholder` | the run placeholder, `tbxph_` and an HMAC of the Job's uid: the injector writes the run token in its place, a GitHub App token for the repository of the Job's project only (contents, pull requests and issues write), one hour long. Empty when the App is not installed there, and the box then stops at start. The pod waits until Tenport writes it; the Job owns it, so it goes with the Job. The Job carries the label `project-id` for it |
 | `claude-credentials` | `credentials.json` | the claude.ai login, `~/.claude/.credentials.json` |
 | `project-<project id>` | `tracker_api_key`, `ntfy_url` | the project's tracker key and notification topic (both optional) |
 
