@@ -654,9 +654,9 @@ and `tools/apply-secrets.sh`.
 6. `install/autoscaler/autoscaler.sh <server> 10.1.0.2`, once Flux has made its Deployment.
 7. `tools/restore-server.sh <day>`: the server's database from the backup.
 8. `install/check.sh`: the autoscaler starts a worker for it (2 minutes).
-9. The login sync of tenbox writes `claude-credentials` again
-   (`systemctl --user start tenbox-login-sync.service`, with the new kubeconfig); then a task
-   Job.
+9. The login sync of tenbox sends the login again
+   (`systemctl --user start tenbox-login-sync.service`), and Tenport writes
+   `agent-<agent id>`; then a task Job.
 
 On the server, the volume and node watches see the volumes and nodes of the old cluster gone
 and record `volume.removed` and `node.removed` for each, at the start.

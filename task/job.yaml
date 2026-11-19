@@ -75,7 +75,7 @@ spec:
               valueFrom: { secretKeyRef: { name: task-__NAME__-__RUN__-placeholder, key: placeholder } }
             - { name: TENBOX_INJECTOR_CA, value: /etc/tenyard/injector/ca.crt }
             - name: CLAUDE_CREDENTIALS
-              valueFrom: { secretKeyRef: { name: claude-credentials, key: credentials.json } }
+              valueFrom: { secretKeyRef: { name: agent-__AGENT_ID__, key: credentials.json } }
             - name: TRACKER_API_KEY
               valueFrom: { secretKeyRef: { name: project-__PROJECT_ID__, key: tracker_api_key, optional: true } }
             - name: NTFY_URL

@@ -127,7 +127,7 @@ the class of the box; data in an `emptyDir` with `medium: Memory` counts in that
 The Job reads four Secrets and one ConfigMap in the namespace. The first Secret is in
 `secrets/tenbox/`, applied by Flux; Tenport writes the run placeholder of its Jobs, the tenbox
 server that of the others,
-the agent's login sync writes the login, and the agent writes the project Secret before each Job
+Tenport writes the login of the run's agent, which the login sync sends, and the agent writes the project Secret before each Job
 (tenbox: `tenbox machine run`). The ConfigMap `injector-ca` (`ca.crt`) is the injector's CA,
 from `install/egress/injector-ca.crt`:
 
@@ -135,7 +135,7 @@ from `install/egress/injector-ca.crt`:
 |---|---|---|
 | `ghcr` | `.dockerconfigjson` | pull secret of the private image (a GitHub token with `read:packages`) |
 | `task-<name>-<run>-placeholder` | `placeholder` | the run placeholder, `tbxph_` and an HMAC of the Job's uid: the injector writes the run token in its place, a GitHub App token for the repository of the Job's project only (contents, pull requests and issues write), one hour long. Empty when the App is not installed there, and the box then stops at start. The pod waits until Tenport writes it; the Job owns it, so it goes with the Job. The Job carries the label `project-id` for it |
-| `claude-credentials` | `credentials.json` | the claude.ai login, `~/.claude/.credentials.json` |
+| `agent-<agent id>` | `credentials.json` | the claude.ai login of the run's agent, `~/.claude/.credentials.json`: the run's agent is the one `POST /runs` names, else the user's default agent. Tenport writes it (`PUT /agents/{agent}/login`) |
 | `project-<project id>` | `tracker_api_key`, `ntfy_url` | the project's tracker key and notification topic (both optional) |
 
 What the box does with them is the image's business (tenbox `machines/k8s/boot.sh`).
