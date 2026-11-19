@@ -58,7 +58,7 @@ spec:
       securityContext: { runAsUser: 65534, runAsGroup: 65534, runAsNonRoot: true, fsGroup: 65534 }
       containers:
         - name: tenport
-          image: ghcr.io/enojen/tenport-server:cb8706f678552b2d8b609b6aee01f0d17d4cb00b@sha256:16c20f458cd939e0cc5af353f778375d82be1dd330ac4f824afb466e1534cb70
+          image: ghcr.io/enojen/tenport-server:79e8d8b5a4c43e60ad7b75e63b88de28aae795c3@sha256:83580f913972b6cf1cf0ac095bef19ce36a1b1cee710b3bfccd482ae5e2baad0
           ports: [{ containerPort: 8080, name: http }]
           env:
             - { name: TENPORT_DATABASE, value: /data/tenport.db }
