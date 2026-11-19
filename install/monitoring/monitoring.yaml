@@ -125,6 +125,7 @@ spec:
             - -storageDataPath=/storage
             - -retentionPeriod=1y
             - -promscrape.config=/config/scrape.yml
+            - -promscrape.configCheckInterval=1m
             - -httpListenAddr=:8428
           ports: [{ containerPort: 8428, name: http }]
           resources:
